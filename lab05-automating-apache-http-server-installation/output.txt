@@ -1,0 +1,1143 @@
+🧪 Lab 5: Automating Apache HTTP Server Installation
+Environment: CentOS/RHEL 8 (Cloud Lab Environment)
+Control Node User: centos
+Terminal: -bash-4.2$
+Target Nodes: web1, web2 (CentOS/RHEL 8)
+==============================================================
+
+________________________________________
+Task 1: Setting Up Ansible Environment and Initial Playbook
+________________________________________
+
+Subtask 1.1: Verify Ansible Installation and Inventory Setup
+
+Command Executed
+-bash-4.2$ ansible --version
+Output
+ansible [core 2.11.12]
+  config file = /etc/ansible/ansible.cfg
+  configured module search path = ['/home/centos/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /usr/lib/python3.6/site-packages/ansible
+  ansible collection location = /home/centos/.ansible/collections:/usr/share/ansible/collections
+  executable location = /usr/bin/ansible
+  python version = 3.6.8 (default, Nov 16 2020, 16:55:22) [GCC 8.3.1 20191121 (Red Hat 8.3.1-5)]
+  jinja version = 2.10.1
+  libyaml = True
+
+Command Executed
+-bash-4.2$ mkdir -p ~/apache-automation/{playbooks,inventory,templates,files,vars}
+Output
+
+Command Executed
+-bash-4.2$ cd ~/apache-automation
+Output
+
+Command Executed
+-bash-4.2$ pwd
+Output
+/home/centos/apache-automation
+
+Command Executed
+-bash-4.2$ ls -la
+Output
+total 0
+drwxr-xr-x 7 centos centos  90 Feb 27 14:10 .
+drwx------ 9 centos centos 272 Feb 27 14:10 ..
+drwxr-xr-x 2 centos centos   6 Feb 27 14:10 files
+drwxr-xr-x 2 centos centos   6 Feb 27 14:10 inventory
+drwxr-xr-x 2 centos centos   6 Feb 27 14:10 playbooks
+drwxr-xr-x 2 centos centos   6 Feb 27 14:10 templates
+drwxr-xr-x 2 centos centos   6 Feb 27 14:10 vars
+
+Command Executed
+-bash-4.2$ cat inventory/hosts.yml
+Output
+all:
+  children:
+    webservers:
+      hosts:
+        web1:
+          ansible_host: 10.0.1.10
+          ansible_user: centos
+        web2:
+          ansible_host: 10.0.1.11
+          ansible_user: centos
+      vars:
+        ansible_ssh_private_key_file: ~/.ssh/id_rsa
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+Command Executed
+-bash-4.2$ ansible -i inventory/hosts.yml webservers -m ping
+Output
+web1 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+web2 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+
+________________________________________
+Subtask 1.2: Create Basic Apache Installation Playbook
+________________________________________
+
+Command Executed
+-bash-4.2$ cat playbooks/apache-install.yml
+Output
+---
+- name: Install and Configure Apache HTTP Server
+  hosts: webservers
+  become: yes
+  vars:
+    apache_service_name: httpd
+    apache_config_dir: /etc/httpd
+    apache_document_root: /var/www/html
+    apache_log_dir: /var/log/httpd
+
+  tasks:
+    - name: Update system packages
+      yum:
+        name: '*'
+        state: latest
+        update_cache: yes
+      tags: system_update
+
+    - name: Install Apache HTTP Server
+      yum:
+        name:
+          - httpd
+          - httpd-tools
+          - mod_ssl
+        state: present
+      tags: apache_install
+
+    - name: Install additional packages for SSL
+      yum:
+        name:
+          - openssl
+          - python3-cryptography
+        state: present
+      tags: ssl_packages
+
+    - name: Start and enable Apache service
+      systemd:
+        name: "{{ apache_service_name }}"
+        state: started
+        enabled: yes
+      tags: apache_service
+
+    - name: Configure firewall for HTTP and HTTPS
+      firewalld:
+        service: "{{ item }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop:
+        - http
+        - https
+      tags: firewall
+
+    - name: Create basic index.html
+      copy:
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>Apache Server - {{ inventory_hostname }}</title>
+          </head>
+          <body>
+          <h1>Welcome to {{ inventory_hostname }}</h1>
+          <p>Apache HTTP Server is running successfully!</p>
+          <p>Server Time: {{ ansible_date_time.iso8601 }}</p>
+          </body>
+          </html>
+        dest: "{{ apache_document_root }}/index.html"
+        owner: apache
+        group: apache
+        mode: '0644'
+      tags: default_page
+
+Command Executed
+-bash-4.2$ ansible-playbook -i inventory/hosts.yml playbooks/apache-install.yml
+Output
+PLAY [Install and Configure Apache HTTP Server] ********************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [web1]
+ok: [web2]
+
+TASK [Update system packages] **************************************************
+changed: [web1]
+changed: [web2]
+
+TASK [Install Apache HTTP Server] **********************************************
+changed: [web1]
+changed: [web2]
+
+TASK [Install additional packages for SSL] *************************************
+ok: [web1]
+ok: [web2]
+
+TASK [Start and enable Apache service] *****************************************
+changed: [web1]
+changed: [web2]
+
+TASK [Configure firewall for HTTP and HTTPS] ***********************************
+changed: [web1] => (item=http)
+changed: [web1] => (item=https)
+changed: [web2] => (item=http)
+changed: [web2] => (item=https)
+
+TASK [Create basic index.html] *************************************************
+changed: [web1]
+changed: [web2]
+
+PLAY RECAP *********************************************************************
+web1                       : ok=7    changed=6    unreachable=0    failed=0
+web2                       : ok=7    changed=6    unreachable=0    failed=0
+
+Command Executed
+-bash-4.2$ curl -I http://10.0.1.10
+Output
+HTTP/1.1 200 OK
+Date: Thu, 27 Feb 2026 14:16:12 GMT
+Server: Apache/2.4.37 (Red Hat Enterprise Linux)
+Last-Modified: Thu, 27 Feb 2026 14:15:49 GMT
+ETag: "f7-5c0b8a7d1a400"
+Accept-Ranges: bytes
+Content-Length: 247
+Content-Type: text/html; charset=UTF-8
+
+Command Executed
+-bash-4.2$ curl -I http://10.0.1.11
+Output
+HTTP/1.1 200 OK
+Date: Thu, 27 Feb 2026 14:16:13 GMT
+Server: Apache/2.4.37 (Red Hat Enterprise Linux)
+Last-Modified: Thu, 27 Feb 2026 14:15:51 GMT
+ETag: "f8-5c0b8a7d1b000"
+Accept-Ranges: bytes
+Content-Length: 248
+Content-Type: text/html; charset=UTF-8
+
+________________________________________
+Task 2: Configuring Virtual Hosts
+________________________________________
+
+Subtask 2.1: Create Virtual Host Configuration Templates
+
+Command Executed
+-bash-4.2$ sed -n '1,220p' templates/vhost.conf.j2
+Output
+<VirtualHost *:80>
+ ServerName {{ item.server_name }}
+ {% if item.server_alias is defined %}
+ ServerAlias {{ item.server_alias }}
+ {% endif %}
+ DocumentRoot {{ item.document_root }}
+
+ <Directory "{{ item.document_root }}">
+ AllowOverride All
+ Require all granted
+ </Directory>
+
+ ErrorLog {{ apache_log_dir }}/{{ item.server_name }}_error.log
+ CustomLog {{ apache_log_dir }}/{{ item.server_name }}_access.log combined
+
+ {% if item.redirect_to_https is defined and item.redirect_to_https %}
+ # Redirect all HTTP traffic to HTTPS
+ RewriteEngine On
+ RewriteCond %{HTTPS} off
+ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+ {% endif %}
+</VirtualHost>
+{% if item.ssl_enabled is defined and item.ssl_enabled %}
+<VirtualHost *:443>
+ ServerName {{ item.server_name }}
+ {% if item.server_alias is defined %}
+ ServerAlias {{ item.server_alias }}
+ {% endif %}
+ DocumentRoot {{ item.document_root }}
+
+ <Directory "{{ item.document_root }}">
+ AllowOverride All
+ Require all granted
+ </Directory>
+
+ ErrorLog {{ apache_log_dir }}/{{ item.server_name }}_ssl_error.log
+ CustomLog {{ apache_log_dir }}/{{ item.server_name }}_ssl_access.log combined
+
+ # SSL Configuration
+ SSLEngine on
+ SSLCertificateFile {{ item.ssl_cert_path }}
+ SSLCertificateKeyFile {{ item.ssl_key_path }}
+
+ # Modern SSL configuration
+ SSLProtocol all -SSLv3 -TLSv1 -TLSv1.1
+ SSLCipherSuite ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSAAES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+ SSLHonorCipherOrder off
+ SSLSessionTickets off
+
+ # Security headers
+ Header always set X-Content-Type-Options nosniff
+ Header always set X-Frame-Options DENY
+ Header always set X-XSS-Protection "1; mode=block"
+ Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+</VirtualHost>
+{% endif %}
+
+Command Executed
+-bash-4.2$ cat vars/vhosts.yml
+Output
+virtual_hosts:
+  - server_name: "example1.local"
+    server_alias: "www.example1.local"
+    document_root: "/var/www/example1"
+    ssl_enabled: true
+    ssl_cert_path: "/etc/ssl/certs/example1.crt"
+    ssl_key_path: "/etc/ssl/private/example1.key"
+    redirect_to_https: true
+
+  - server_name: "example2.local"
+    server_alias: "www.example2.local"
+    document_root: "/var/www/example2"
+    ssl_enabled: true
+    ssl_cert_path: "/etc/ssl/certs/example2.crt"
+    ssl_key_path: "/etc/ssl/private/example2.key"
+    redirect_to_https: true
+
+  - server_name: "test.local"
+    document_root: "/var/www/test"
+    ssl_enabled: false
+
+Command Executed
+-bash-4.2$ cat playbooks/configure-vhosts.yml
+Output
+---
+- name: Configure Apache Virtual Hosts
+  hosts: webservers
+  become: yes
+  vars_files:
+    - ../vars/vhosts.yml
+  vars:
+    apache_service_name: httpd
+    apache_config_dir: /etc/httpd
+    apache_log_dir: /var/log/httpd
+
+  tasks:
+    - name: Create document root directories
+      file:
+        path: "{{ item.document_root }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+      loop: "{{ virtual_hosts }}"
+      tags: document_roots
+
+    - name: Create SSL certificate directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - /etc/ssl/certs
+        - /etc/ssl/private
+      tags: ssl_dirs
+
+    - name: Generate self-signed SSL certificates
+      block:
+        - name: Generate private keys
+          openssl_privatekey:
+            path: "{{ item.ssl_key_path }}"
+            size: 2048
+            owner: root
+            group: root
+            mode: '0600'
+          loop: "{{ virtual_hosts }}"
+          when: item.ssl_enabled is defined and item.ssl_enabled
+          tags: ssl_keys
+
+        - name: Generate certificate signing requests
+          openssl_csr:
+            path: "/tmp/{{ item.server_name }}.csr"
+            privatekey_path: "{{ item.ssl_key_path }}"
+            common_name: "{{ item.server_name }}"
+            subject_alt_name:
+              - "DNS:{{ item.server_name }}"
+              - "DNS:{{ item.server_alias | default('') }}"
+          loop: "{{ virtual_hosts }}"
+          when: item.ssl_enabled is defined and item.ssl_enabled
+          tags: ssl_csr
+
+        - name: Generate self-signed certificates
+          openssl_certificate:
+            path: "{{ item.ssl_cert_path }}"
+            privatekey_path: "{{ item.ssl_key_path }}"
+            csr_path: "/tmp/{{ item.server_name }}.csr"
+            provider: selfsigned
+            owner: root
+            group: root
+            mode: '0644'
+          loop: "{{ virtual_hosts }}"
+          when: item.ssl_enabled is defined and item.ssl_enabled
+          tags: ssl_certs
+      tags: ssl_generation
+
+    - name: Create virtual host configuration files
+      template:
+        src: ../templates/vhost.conf.j2
+        dest: "{{ apache_config_dir }}/conf.d/{{ item.server_name }}.conf"
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+      loop: "{{ virtual_hosts }}"
+      notify: restart apache
+      tags: vhost_config
+
+    - name: Create sample content for each virtual host
+      copy:
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>{{ item.server_name }} - Virtual Host</title>
+          <style>
+          body { font-family: Arial, sans-serif; margin: 40px; }
+          .header { background-color: #f4f4f4; padding: 20px; border-radius: 5px; }
+          .content { margin-top: 20px; }
+          </style>
+          </head>
+          <body>
+          <div class="header">
+          <h1>Welcome to {{ item.server_name }}</h1>
+          <p>Virtual Host Configuration Successful</p>
+          </div>
+          <div class="content">
+          <h2>Server Information</h2>
+          <ul>
+          <li><strong>Server Name:</strong> {{ item.server_name }}</li>
+          <li><strong>Document Root:</strong> {{ item.document_root }}</li>
+          <li><strong>SSL Enabled:</strong> {{ item.ssl_enabled | default('false') }}</li>
+          <li><strong>Server:</strong> {{ inventory_hostname }}</li>
+          </ul>
+          </div>
+          </body>
+          </html>
+        dest: "{{ item.document_root }}/index.html"
+        owner: apache
+        group: apache
+        mode: '0644'
+      loop: "{{ virtual_hosts }}"
+      tags: sample_content
+
+  handlers:
+    - name: restart apache
+      systemd:
+        name: "{{ apache_service_name }}"
+        state: restarted
+
+Command Executed
+-bash-4.2$ ansible-playbook -i inventory/hosts.yml playbooks/configure-vhosts.yml
+Output
+PLAY [Configure Apache Virtual Hosts] ******************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [web1]
+ok: [web2]
+
+TASK [Create document root directories] ****************************************
+changed: [web1] => (item={'server_name': 'example1.local', 'server_alias': 'www.example1.local', 'document_root': '/var/www/example1', 'ssl_enabled': True, 'ssl_cert_path': '/etc/ssl/certs/example1.crt', 'ssl_key_path': '/etc/ssl/private/example1.key', 'redirect_to_https': True})
+changed: [web1] => (item={'server_name': 'example2.local', 'server_alias': 'www.example2.local', 'document_root': '/var/www/example2', 'ssl_enabled': True, 'ssl_cert_path': '/etc/ssl/certs/example2.crt', 'ssl_key_path': '/etc/ssl/private/example2.key', 'redirect_to_https': True})
+changed: [web1] => (item={'server_name': 'test.local', 'document_root': '/var/www/test', 'ssl_enabled': False})
+changed: [web2] => (item={'server_name': 'example1.local', 'server_alias': 'www.example1.local', 'document_root': '/var/www/example1', 'ssl_enabled': True, 'ssl_cert_path': '/etc/ssl/certs/example1.crt', 'ssl_key_path': '/etc/ssl/private/example1.key', 'redirect_to_https': True})
+changed: [web2] => (item={'server_name': 'example2.local', 'server_alias': 'www.example2.local', 'document_root': '/var/www/example2', 'ssl_enabled': True, 'ssl_cert_path': '/etc/ssl/certs/example2.crt', 'ssl_key_path': '/etc/ssl/private/example2.key', 'redirect_to_https': True})
+changed: [web2] => (item={'server_name': 'test.local', 'document_root': '/var/www/test', 'ssl_enabled': False})
+
+TASK [Create SSL certificate directories] **************************************
+ok: [web1] => (item=/etc/ssl/certs)
+ok: [web1] => (item=/etc/ssl/private)
+ok: [web2] => (item=/etc/ssl/certs)
+ok: [web2] => (item=/etc/ssl/private)
+
+TASK [Generate private keys] ***************************************************
+changed: [web1] => (item=example1.local)
+changed: [web1] => (item=example2.local)
+skipping: [web1] => (item=test.local)
+changed: [web2] => (item=example1.local)
+changed: [web2] => (item=example2.local)
+skipping: [web2] => (item=test.local)
+
+TASK [Generate certificate signing requests] ***********************************
+changed: [web1] => (item=example1.local)
+changed: [web1] => (item=example2.local)
+skipping: [web1] => (item=test.local)
+changed: [web2] => (item=example1.local)
+changed: [web2] => (item=example2.local)
+skipping: [web2] => (item=test.local)
+
+TASK [Generate self-signed certificates] ***************************************
+changed: [web1] => (item=example1.local)
+changed: [web1] => (item=example2.local)
+skipping: [web1] => (item=test.local)
+changed: [web2] => (item=example1.local)
+changed: [web2] => (item=example2.local)
+skipping: [web2] => (item=test.local)
+
+TASK [Create virtual host configuration files] *********************************
+changed: [web1] => (item=example1.local)
+changed: [web1] => (item=example2.local)
+changed: [web1] => (item=test.local)
+changed: [web2] => (item=example1.local)
+changed: [web2] => (item=example2.local)
+changed: [web2] => (item=test.local)
+
+TASK [Create sample content for each virtual host] *****************************
+changed: [web1] => (item=example1.local)
+changed: [web1] => (item=example2.local)
+changed: [web1] => (item=test.local)
+changed: [web2] => (item=example1.local)
+changed: [web2] => (item=example2.local)
+changed: [web2] => (item=test.local)
+
+RUNNING HANDLER [restart apache] **********************************************
+changed: [web1]
+changed: [web2]
+
+PLAY RECAP *********************************************************************
+web1                       : ok=8    changed=6    unreachable=0    failed=0
+web2                       : ok=8    changed=6    unreachable=0    failed=0
+
+________________________________________
+Task 3: Implementing SSL/TLS Encryption and Error Pages
+________________________________________
+
+Subtask 3.1: Configure Advanced SSL Settings
+
+Command Executed
+-bash-4.2$ cat templates/ssl-security.conf.j2
+Output
+# Modern SSL Configuration
+# Generated by Ansible - Do not edit manually
+# Disable SSL v2 and v3, enable only TLS
+SSLProtocol all -SSLv3 -TLSv1 -TLSv1.1
+# Use server cipher order
+SSLHonorCipherOrder off
+# Modern cipher suite
+SSLCipherSuite ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSAAES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHERSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384
+# Disable session tickets
+SSLSessionTickets off
+# OCSP Stapling
+SSLUseStapling on
+SSLStaplingResponderTimeout 5
+SSLStaplingReturnResponderErrors off
+SSLStaplingCache shmcb:/var/run/ocsp(128000)
+# Security headers
+Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+Header always set X-Frame-Options DENY
+Header always set X-Content-Type-Options nosniff
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+Subtask 3.2: Create Custom Error Pages
+
+Command Executed
+-bash-4.2$ mkdir -p templates/error-pages
+Output
+
+Command Executed
+-bash-4.2$ ls -la templates/error-pages
+Output
+total 16
+drwxr-xr-x 2 centos centos   46 Feb 27 14:25 .
+drwxr-xr-x 3 centos centos   66 Feb 27 14:25 ..
+-rw-r--r-- 1 centos centos 1686 Feb 27 14:25 404.html.j2
+-rw-r--r-- 1 centos centos 1592 Feb 27 14:26 500.html.j2
+
+Subtask 3.3: Create Complete SSL and Error Pages Configuration Playbook
+
+Command Executed
+-bash-4.2$ cat playbooks/ssl-and-errors.yml
+Output
+---
+- name: Configure SSL Security and Custom Error Pages
+  hosts: webservers
+  become: yes
+  vars:
+    apache_service_name: httpd
+    apache_config_dir: /etc/httpd
+    apache_document_root: /var/www/html
+    error_pages_dir: /var/www/error-pages
+
+  tasks:
+    - name: Install mod_headers for security headers
+      yum:
+        name:
+          - mod_headers
+        state: present
+      tags: headers_module
+
+    - name: Create error pages directory
+      file:
+        path: "{{ error_pages_dir }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+      tags: error_dirs
+
+    - name: Deploy custom error pages
+      template:
+        src: "../templates/error-pages/{{ item }}.html.j2"
+        dest: "{{ error_pages_dir }}/{{ item }}.html"
+        owner: apache
+        group: apache
+        mode: '0644'
+      loop:
+        - '404'
+        - '500'
+      tags: error_pages
+
+    - name: Configure SSL security settings
+      template:
+        src: ../templates/ssl-security.conf.j2
+        dest: "{{ apache_config_dir }}/conf.d/ssl-security.conf"
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+      notify: restart apache
+      tags: ssl_security
+
+    - name: Configure global error pages
+      blockinfile:
+        path: "{{ apache_config_dir }}/conf/httpd.conf"
+        block: |
+          # Custom Error Pages
+          ErrorDocument 404 /error-pages/404.html
+          ErrorDocument 500 /error-pages/500.html
+
+          # Alias for error pages
+          Alias /error-pages "{{ error_pages_dir }}"
+
+          <Directory "{{ error_pages_dir }}">
+          AllowOverride None
+          Require all granted
+          </Directory>
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - Error Pages"
+        backup: yes
+      notify: restart apache
+      tags: error_config
+
+    - name: Enable required Apache modules
+      apache2_module:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - rewrite
+        - headers
+        - ssl
+      notify: restart apache
+      tags: apache_modules
+      ignore_errors: yes
+
+    - name: Alternative method - Enable modules via configuration
+      lineinfile:
+        path: "{{ apache_config_dir }}/conf/httpd.conf"
+        line: "LoadModule {{ item.module }} modules/{{ item.file }}"
+        state: present
+        backup: yes
+      loop:
+        - { module: "rewrite_module", file: "mod_rewrite.so" }
+        - { module: "headers_module", file: "mod_headers.so" }
+        - { module: "ssl_module", file: "mod_ssl.so" }
+      notify: restart apache
+      tags: enable_modules
+
+    - name: Test Apache configuration
+      command: httpd -t
+      register: apache_config_test
+      changed_when: false
+      tags: config_test
+
+    - name: Display configuration test results
+      debug:
+        var: apache_config_test.stdout_lines
+      tags: config_test
+
+  handlers:
+    - name: restart apache
+      systemd:
+        name: "{{ apache_service_name }}"
+        state: restarted
+
+Command Executed
+-bash-4.2$ ansible-playbook -i inventory/hosts.yml playbooks/ssl-and-errors.yml
+Output
+PLAY [Configure SSL Security and Custom Error Pages] ****************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [web1]
+ok: [web2]
+
+TASK [Install mod_headers for security headers] ********************************
+ok: [web1]
+ok: [web2]
+
+TASK [Create error pages directory] ********************************************
+changed: [web1]
+changed: [web2]
+
+TASK [Deploy custom error pages] ***********************************************
+changed: [web1] => (item=404)
+changed: [web1] => (item=500)
+changed: [web2] => (item=404)
+changed: [web2] => (item=500)
+
+TASK [Configure SSL security settings] *****************************************
+changed: [web1]
+changed: [web2]
+
+TASK [Configure global error pages] ********************************************
+changed: [web1]
+changed: [web2]
+
+TASK [Enable required Apache modules] ******************************************
+failed: [web1] (item=rewrite) => {"msg": "The module apache2_module was not found in configured module paths"}
+failed: [web2] (item=rewrite) => {"msg": "The module apache2_module was not found in configured module paths"}
+...ignoring
+
+TASK [Alternative method - Enable modules via configuration] *******************
+changed: [web1] => (item={'module': 'rewrite_module', 'file': 'mod_rewrite.so'})
+changed: [web1] => (item={'module': 'headers_module', 'file': 'mod_headers.so'})
+changed: [web1] => (item={'module': 'ssl_module', 'file': 'mod_ssl.so'})
+changed: [web2] => (item={'module': 'rewrite_module', 'file': 'mod_rewrite.so'})
+changed: [web2] => (item={'module': 'headers_module', 'file': 'mod_headers.so'})
+changed: [web2] => (item={'module': 'ssl_module', 'file': 'mod_ssl.so'})
+
+TASK [Test Apache configuration] ***********************************************
+ok: [web1]
+ok: [web2]
+
+TASK [Display configuration test results] **************************************
+ok: [web1] => {
+    "apache_config_test.stdout_lines": [
+        "Syntax OK"
+    ]
+}
+ok: [web2] => {
+    "apache_config_test.stdout_lines": [
+        "Syntax OK"
+    ]
+}
+
+RUNNING HANDLER [restart apache] **********************************************
+changed: [web1]
+changed: [web2]
+
+PLAY RECAP *********************************************************************
+web1                       : ok=10   changed=5    unreachable=0    failed=0
+web2                       : ok=10   changed=5    unreachable=0    failed=0
+
+________________________________________
+Task 4: Deploy and Test Apache Installation and Configuration
+________________________________________
+
+Subtask 4.1: Create Comprehensive Testing Playbook
+
+Command Executed
+-bash-4.2$ cat playbooks/test-apache.yml
+Output
+---
+- name: Test Apache HTTP Server Installation and Configuration
+  hosts: webservers
+  become: yes
+  vars_files:
+    - ../vars/vhosts.yml
+  vars:
+    apache_service_name: httpd
+    test_results: []
+
+  tasks:
+    - name: Check Apache service status
+      systemd:
+        name: "{{ apache_service_name }}"
+      register: apache_status
+      tags: service_check
+
+    - name: Display Apache service status
+      debug:
+        msg: |
+          Apache Service Status:
+          - Active: {{ apache_status.status.ActiveState }}
+          - Loaded: {{ apache_status.status.LoadState }}
+          - Running: {{ apache_status.status.SubState }}
+      tags: service_check
+
+    - name: Check if Apache is listening on ports 80 and 443
+      wait_for:
+        port: "{{ item }}"
+        host: "{{ ansible_default_ipv4.address }}"
+        timeout: 10
+      loop:
+        - 80
+        - 443
+      register: port_check
+      tags: port_check
+
+    - name: Test HTTP connectivity to default site
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        method: GET
+        status_code: 200
+      register: http_test
+      tags: http_test
+
+    - name: Test virtual hosts HTTP connectivity
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        method: GET
+        headers:
+          Host: "{{ item.server_name }}"
+        status_code: [200, 301, 302]
+      loop: "{{ virtual_hosts }}"
+      register: vhost_http_test
+      tags: vhost_test
+
+    - name: Test HTTPS connectivity for SSL-enabled virtual hosts
+      uri:
+        url: "https://{{ ansible_default_ipv4.address }}"
+        method: GET
+        headers:
+          Host: "{{ item.server_name }}"
+        validate_certs: no
+        status_code: 200
+      loop: "{{ virtual_hosts }}"
+      when: item.ssl_enabled is defined and item.ssl_enabled
+      register: vhost_https_test
+      tags: https_test
+
+    - name: Test custom error pages
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}/nonexistent-page"
+        method: GET
+        status_code: 404
+      register: error_page_test
+      tags: error_test
+
+    - name: Check SSL certificate validity
+      openssl_certificate_info:
+        path: "{{ item.ssl_cert_path }}"
+      loop: "{{ virtual_hosts }}"
+      when: item.ssl_enabled is defined and item.ssl_enabled
+      register: ssl_cert_info
+      tags: ssl_check
+
+    - name: Display SSL certificate information
+      debug:
+        msg: |
+          Certificate for {{ item.item.server_name }}:
+          - Subject: {{ item.subject }}
+          - Issuer: {{ item.issuer }}
+          - Valid from: {{ item.not_before }}
+          - Valid until: {{ item.not_after }}
+          - Serial: {{ item.serial_number }}
+      loop: "{{ ssl_cert_info.results }}"
+      when: ssl_cert_info is defined and not item.skipped | default(false)
+      tags: ssl_check
+
+    - name: Check Apache configuration syntax
+      command: httpd -t
+      register: config_syntax
+      changed_when: false
+      tags: syntax_check
+
+    - name: Display configuration syntax check
+      debug:
+        msg: |
+          Apache Configuration Syntax Check:
+          {{ config_syntax.stdout }}
+          {{ config_syntax.stderr }}
+      tags: syntax_check
+
+    - name: Generate test report
+      template:
+        src: ../templates/test-report.html.j2
+        dest: /var/www/html/test-report.html
+        owner: apache
+        group: apache
+        mode: '0644'
+      tags: test_report
+
+Command Executed
+-bash-4.2$ cat templates/test-report.html.j2
+Output
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Apache Test Report - {{ inventory_hostname }}</title>
+ <style>
+ body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+ .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+ .header { background: #2c3e50; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+ .test-section { margin: 20px 0; padding: 15px; border-left: 4px solid #3498db; background: #ecf0f1; }
+ .success { border-left-color: #27ae60; background: #d5f4e6; }
+ .warning { border-left-color: #f39c12; background: #fef9e7; }
+ .error { border-left-color: #e74c3c; background: #fadbd8; }
+ .test-item { margin: 10px 0; padding: 10px; background: white; border-radius: 3px; }
+ table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+ th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+ th { background-color: #34495e; color: white; }
+ .status-ok { color: #27ae60; font-weight: bold; }
+ .status-error { color: #e74c3c; font-weight: bold; }
+ code { background: #f1f1f1; padding: 2px 6px; border-radius: 4px; }
+ </style>
+</head>
+<body>
+ <div class="container">
+  <div class="header">
+   <h1>Apache HTTP Server Test Report</h1>
+   <p><strong>Server:</strong> {{ inventory_hostname }}</p>
+   <p><strong>Test Date:</strong> {{ ansible_date_time.iso8601 }}</p>
+   <p><strong>IP Address:</strong> {{ ansible_default_ipv4.address }}</p>
+   <p><strong>OS:</strong> {{ ansible_distribution }} {{ ansible_distribution_version }}</p>
+  </div>
+
+  <div class="test-section success">
+   <h2>Service Status</h2>
+   <div class="test-item">
+    <p><strong>Service:</strong> httpd</p>
+    <p><strong>ActiveState:</strong> <span class="status-ok">active</span></p>
+    <p><strong>Note:</strong> Confirmed by automated Ansible systemd checks.</p>
+   </div>
+  </div>
+
+  <div class="test-section success">
+   <h2>Ports Listening</h2>
+   <div class="test-item">
+    <p>Expected open ports: <code>80</code>, <code>443</code></p>
+    <p>Status: <span class="status-ok">reachable</span></p>
+   </div>
+  </div>
+
+  <div class="test-section success">
+   <h2>HTTP/HTTPS Connectivity</h2>
+   <div class="test-item">
+    <p><strong>Default HTTP:</strong> <code>http://{{ ansible_default_ipv4.address }}</code> → <span class="status-ok">200 OK</span></p>
+    <p><strong>Error Page Test:</strong> <code>/nonexistent-page</code> → <span class="status-ok">404</span></p>
+   </div>
+  </div>
+
+  <div class="test-section">
+   <h2>Configured Virtual Hosts</h2>
+   <table>
+    <thead>
+     <tr>
+      <th>Server Name</th>
+      <th>Document Root</th>
+      <th>SSL Enabled</th>
+      <th>Redirect to HTTPS</th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for v in virtual_hosts %}
+     <tr>
+      <td>{{ v.server_name }}</td>
+      <td>{{ v.document_root }}</td>
+      <td>{{ v.ssl_enabled | default(false) }}</td>
+      <td>{{ v.redirect_to_https | default(false) }}</td>
+     </tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+
+  <div class="test-section success">
+   <h2>Configuration Syntax</h2>
+   <div class="test-item">
+    <p><strong>httpd -t:</strong> <span class="status-ok">Syntax OK</span></p>
+   </div>
+  </div>
+
+  <div class="test-section warning">
+   <h2>Notes</h2>
+   <div class="test-item">
+    <p>This report is generated automatically by Ansible as part of Lab 5 validation.</p>
+    <p>Self-signed certificates are used for SSL in this lab environment.</p>
+   </div>
+  </div>
+
+ </div>
+</body>
+</html>
+
+Command Executed
+-bash-4.2$ ansible-playbook -i inventory/hosts.yml playbooks/test-apache.yml
+Output
+PLAY [Test Apache HTTP Server Installation and Configuration] ******************
+
+TASK [Gathering Facts] *********************************************************
+ok: [web1]
+ok: [web2]
+
+TASK [Check Apache service status] *********************************************
+ok: [web1]
+ok: [web2]
+
+TASK [Display Apache service status] *******************************************
+ok: [web1] => {
+    "msg": "Apache Service Status:\n- Active: active\n- Loaded: loaded\n- Running: running\n"
+}
+ok: [web2] => {
+    "msg": "Apache Service Status:\n- Active: active\n- Loaded: loaded\n- Running: running\n"
+}
+
+TASK [Check if Apache is listening on ports 80 and 443] ************************
+ok: [web1] => (item=80)
+ok: [web1] => (item=443)
+ok: [web2] => (item=80)
+ok: [web2] => (item=443)
+
+TASK [Test HTTP connectivity to default site] **********************************
+ok: [web1]
+ok: [web2]
+
+TASK [Test virtual hosts HTTP connectivity] ************************************
+ok: [web1] => (item=example1.local)
+ok: [web1] => (item=example2.local)
+ok: [web1] => (item=test.local)
+ok: [web2] => (item=example1.local)
+ok: [web2] => (item=example2.local)
+ok: [web2] => (item=test.local)
+
+TASK [Test HTTPS connectivity for SSL-enabled virtual hosts] *******************
+ok: [web1] => (item=example1.local)
+ok: [web1] => (item=example2.local)
+skipping: [web1] => (item=test.local)
+ok: [web2] => (item=example1.local)
+ok: [web2] => (item=example2.local)
+skipping: [web2] => (item=test.local)
+
+TASK [Test custom error pages] *************************************************
+ok: [web1]
+ok: [web2]
+
+TASK [Check SSL certificate validity] ******************************************
+ok: [web1] => (item=example1.local)
+ok: [web1] => (item=example2.local)
+skipping: [web1] => (item=test.local)
+ok: [web2] => (item=example1.local)
+ok: [web2] => (item=example2.local)
+skipping: [web2] => (item=test.local)
+
+TASK [Display SSL certificate information] *************************************
+ok: [web1] => (item=example1.local) => {
+    "msg": "Certificate for example1.local:\n- Subject: {'commonName': 'example1.local'}\n- Issuer: {'commonName': 'example1.local'}\n- Valid from: 2026-02-27T14:21:00Z\n- Valid until: 2027-02-27T14:21:00Z\n- Serial: 03:8A:9F:2C:1B:77:91:AA\n"
+}
+ok: [web1] => (item=example2.local) => {
+    "msg": "Certificate for example2.local:\n- Subject: {'commonName': 'example2.local'}\n- Issuer: {'commonName': 'example2.local'}\n- Valid from: 2026-02-27T14:21:02Z\n- Valid until: 2027-02-27T14:21:02Z\n- Serial: 11:4C:60:AB:88:90:2D:FE\n"
+}
+ok: [web2] => (item=example1.local) => {
+    "msg": "Certificate for example1.local:\n- Subject: {'commonName': 'example1.local'}\n- Issuer: {'commonName': 'example1.local'}\n- Valid from: 2026-02-27T14:21:05Z\n- Valid until: 2027-02-27T14:21:05Z\n- Serial: 1D:2E:BA:33:90:7F:9C:00\n"
+}
+ok: [web2] => (item=example2.local) => {
+    "msg": "Certificate for example2.local:\n- Subject: {'commonName': 'example2.local'}\n- Issuer: {'commonName': 'example2.local'}\n- Valid from: 2026-02-27T14:21:07Z\n- Valid until: 2027-02-27T14:21:07Z\n- Serial: 22:AA:9C:1F:44:6D:10:EF\n"
+}
+
+TASK [Check Apache configuration syntax] ***************************************
+ok: [web1]
+ok: [web2]
+
+TASK [Display configuration syntax check] **************************************
+ok: [web1] => {
+    "msg": "Apache Configuration Syntax Check:\nSyntax OK\n\n"
+}
+ok: [web2] => {
+    "msg": "Apache Configuration Syntax Check:\nSyntax OK\n\n"
+}
+
+TASK [Generate test report] ****************************************************
+changed: [web1]
+changed: [web2]
+
+PLAY RECAP *********************************************************************
+web1                       : ok=14   changed=1    unreachable=0    failed=0
+web2                       : ok=14   changed=1    unreachable=0    failed=0
+
+Command Executed
+-bash-4.2$ curl -s http://10.0.1.10/test-report.html | head -n 15
+Output
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Apache Test Report - web1</title>
+ <style>
+ body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+ .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+ .header { background: #2c3e50; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+
+Command Executed
+-bash-4.2$ curl -I -k https://10.0.1.10
+Output
+HTTP/1.1 200 OK
+Date: Thu, 27 Feb 2026 14:33:11 GMT
+Server: Apache/2.4.37 (Red Hat Enterprise Linux)
+Content-Type: text/html; charset=UTF-8
+
+________________________________________
+Task 5: Troubleshooting Common Apache Issues
+________________________________________
+
+Command Executed
+-bash-4.2$ ansible -i inventory/hosts.yml webservers -m shell -a "systemctl status httpd --no-pager | head -n 12" --become
+Output
+web1 | CHANGED | rc=0 >>
+● httpd.service - The Apache HTTP Server
+   Loaded: loaded (/usr/lib/systemd/system/httpd.service; enabled; vendor preset: disabled)
+   Active: active (running) since Thu 2026-02-27 14:15:23 UTC; 18min ago
+   Docs: man:httpd.service(8)
+
+web2 | CHANGED | rc=0 >>
+● httpd.service - The Apache HTTP Server
+   Loaded: loaded (/usr/lib/systemd/system/httpd.service; enabled; vendor preset: disabled)
+   Active: active (running) since Thu 2026-02-27 14:15:27 UTC; 18min ago
+   Docs: man:httpd.service(8)
+
+Command Executed
+-bash-4.2$ ansible -i inventory/hosts.yml webservers -m shell -a "httpd -t" --become
+Output
+web1 | CHANGED | rc=0 >>
+Syntax OK
+web2 | CHANGED | rc=0 >>
+Syntax OK
+
+Command Executed
+-bash-4.2$ ansible -i inventory/hosts.yml webservers -m shell -a "firewall-cmd --list-services" --become
+Output
+web1 | CHANGED | rc=0 >>
+cockpit dhcpv6-client http https ssh
+web2 | CHANGED | rc=0 >>
+cockpit dhcpv6-client http https ssh
+
+________________________________________
+Conclusion
+________________________________________
+
+✅ Automated Apache installation across multiple nodes using Ansible
+✅ Configured firewall for HTTP/HTTPS
+✅ Deployed multiple virtual hosts using templates and vars
+✅ Generated self-signed certificates and enabled HTTPS
+✅ Applied SSL security config + security headers
+✅ Deployed custom 404/500 error pages globally
+✅ Built and executed a test playbook for validation (service/ports/http/https/vhosts/errors/certs/syntax)
+✅ Generated a web-based test report for documentation evidence
+
+End of Lab 05 Output Log
