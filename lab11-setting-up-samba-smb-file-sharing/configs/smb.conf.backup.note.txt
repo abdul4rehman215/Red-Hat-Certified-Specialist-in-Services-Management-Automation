@@ -1,0 +1,7 @@
+This repository includes configs/smb.conf, which reflects the final Samba configuration used in Lab 11.
+
+During the lab, a backup of the default configuration was created on the system:
+  /etc/samba/smb.conf  ->  /etc/samba/smb.conf.backup
+
+That backup file is not included in this repo to keep the portfolio clean and avoid storing vendor default configs.
+If needed, you can recreate it on a fresh system by reinstalling samba and referencing the package default smb.conf.
