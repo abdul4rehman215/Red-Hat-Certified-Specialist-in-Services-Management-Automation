@@ -1,0 +1,19 @@
+---
+database_settings:
+  primary_db:
+    username: root
+    password: RootPassword123
+    host: primary-db.internal
+  backup_db:
+    username: backup_user
+    password: BackupPassword456
+    host: backup-db.internal
+
+application_secrets:
+  jwt_secret: jwt_super_secret_key_2023
+  encryption_key: encryption_key_very_secure
+
+monitoring_credentials:
+  grafana_admin: admin
+  grafana_password: GrafanaSecure789
+  prometheus_token: prom_token_secure_123
