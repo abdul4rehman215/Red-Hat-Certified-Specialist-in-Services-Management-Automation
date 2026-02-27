@@ -1,0 +1,36 @@
+---
+# defaults file for apache-role
+
+# Apache package name (varies by OS)
+apache_package: httpd
+
+# Apache service name
+apache_service: httpd
+
+# Apache configuration directory
+apache_config_dir: /etc/httpd/conf.d
+
+# Apache document root
+apache_document_root: /var/www/html
+
+# Apache listen port
+apache_port: 80
+
+# Apache server name
+apache_server_name: "{{ ansible_fqdn }}"
+
+# Apache admin email
+apache_admin_email: admin@example.com
+
+# Custom index page content
+apache_index_content: |
+ <html>
+ <head>
+ <title>Welcome to Apache</title>
+ </head>
+ <body>
+ <h1>Apache HTTP Server Deployed with Ansible</h1>
+ <p>Server: {{ ansible_hostname }}</p>
+ <p>IP Address: {{ ansible_default_ipv4.address }}</p>
+ </body>
+ </html>
