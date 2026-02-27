@@ -1,0 +1,41 @@
+---
+- name: Configure Sudo Access
+  hosts: all
+  become: yes
+  tasks:
+    - name: Create sudoers file for developers group
+      copy:
+        content: |
+          # Allow developers group to run specific commands
+          %developers ALL=(ALL) /bin/systemctl status *, /bin/systemctl restart httpd, /usr/bin/tail /var/log/*
+        dest: /etc/sudoers.d/developers
+        owner: root
+        group: root
+        mode: '0440'
+        validate: 'visudo -cf %s'
+
+    - name: Create sudoers file for operators group
+      copy:
+        content: |
+          # Allow operators group full sudo access
+          %operators ALL=(ALL) NOPASSWD: ALL
+        dest: /etc/sudoers.d/operators
+        owner: root
+        group: root
+        mode: '0440'
+        validate: 'visudo -cf %s'
+
+    - name: Set password for developer users
+      user:
+        name: "{{ item }}"
+        password: "{{ 'DevPass123!' | password_hash('sha512') }}"
+        update_password: on_create
+      loop:
+        - developer1
+        - developer2
+
+    - name: Set password for operator users
+      user:
+        name: operator1
+        password: "{{ 'OpPass123!' | password_hash('sha512') }}"
+        update_password: on_create
