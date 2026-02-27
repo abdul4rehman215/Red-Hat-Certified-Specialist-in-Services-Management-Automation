@@ -1,0 +1,103 @@
+---
+- name: MariaDB Database Restore Automation
+  hosts: database_servers
+  become: yes
+  vars:
+    backup_dir: "/opt/mariadb-backups"
+    mysql_root_password: ""
+    restore_date: "{{ restore_target_date | default(ansible_date_time.date) }}"
+
+  tasks:
+    - name: Prompt for restore confirmation
+      pause:
+        prompt: |
+          WARNING: This will restore databases from backup!
+          This operation will OVERWRITE existing data.
+          Restore date: {{ restore_date }}
+
+          Available backup dates:
+          {{ ansible_date_time.date }}
+
+          Type 'yes' to continue or 'no' to abort
+      register: restore_confirmation
+      when: force_restore is not defined
+
+    - name: Abort if not confirmed
+      fail:
+        msg: "Restore operation aborted by user"
+      when:
+        - force_restore is not defined
+        - restore_confirmation.user_input != "yes"
+
+    - name: Check if backup directory exists
+      stat:
+        path: "{{ backup_dir }}/{{ restore_date }}"
+      register: backup_dir_stat
+
+    - name: Fail if backup directory doesn't exist
+      fail:
+        msg: "Backup directory {{ backup_dir }}/{{ restore_date }} does not exist"
+      when: not backup_dir_stat.stat.exists
+
+    - name: List available backup files
+      find:
+        paths: "{{ backup_dir }}/{{ restore_date }}"
+        patterns: "*.sql.gz"
+      register: available_backups
+
+    - name: Display available backups
+      debug:
+        msg: "Available backup files: {{ available_backups.files | map(attribute='path') | map('basename') | list }}"
+
+    - name: Check MariaDB service status
+      systemd:
+        name: mariadb
+        state: started
+      register: mariadb_status
+
+    - name: Create restore log entry - Start
+      lineinfile:
+        path: "{{ backup_dir }}/restore.log"
+        line: "{{ ansible_date_time.iso8601 }} - Starting restore operation from {{ restore_date }}"
+        create: yes
+        mode: '0644'
+
+    - name: Restore individual databases
+      shell: |
+        zcat {{ item.path }} | mysql -u root {{ '-p' + mysql_root_password if mysql_root_password else '' }}
+      loop: "{{ available_backups.files }}"
+      when:
+        - "'full_backup' not in item.path"
+        - restore_type is not defined or restore_type == "individual"
+      register: restore_results
+      failed_when: restore_results.rc != 0
+
+    - name: Restore from full backup
+      shell: |
+        zcat {{ backup_dir }}/{{ restore_date }}/full_backup_*.sql.gz | mysql -u root {{ '-p' + mysql_root_password if mysql_root_password else '' }}
+      when: restore_type is defined and restore_type == "full"
+      register: full_restore_result
+      failed_when: full_restore_result.rc != 0
+
+    - name: Verify database restoration
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        query: "SHOW DATABASES"
+      register: databases_after_restore
+
+    - name: Create restore log entry - Complete
+      lineinfile:
+        path: "{{ backup_dir }}/restore.log"
+        line: "{{ ansible_date_time.iso8601 }} - Restore operation completed successfully"
+        create: yes
+        mode: '0644'
+
+    - name: Display restore summary
+      debug:
+        msg: |
+          Restore Summary:
+          - Restore Date: {{ restore_date }}
+          - Backup Source: {{ backup_dir }}/{{ restore_date }}
+          - Databases Available: {{ databases_after_restore.query_result[0] | length }}
+          - Restore Type: {{ restore_type | default('individual') }}
