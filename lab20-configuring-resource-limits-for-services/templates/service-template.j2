@@ -1,0 +1,32 @@
+[Unit]
+Description={{ item.description }}
+After=network.target
+
+[Service]
+Type=simple
+ExecStart={{ item.exec_start }}
+Restart=always
+RestartSec=10
+User={{ item.user }}
+Group={{ item.group }}
+
+# Resource Limits
+CPUQuota={{ item.cpu_quota }}
+MemoryMax={{ item.memory_max }}
+TasksMax={{ item.tasks_max }}
+IOWeight={{ item.io_weight }}
+
+# Enable resource accounting
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes
+IOAccounting=yes
+
+# Additional security and resource controls
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target
