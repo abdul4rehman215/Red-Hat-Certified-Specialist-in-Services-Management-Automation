@@ -1,0 +1,8 @@
+- name: Check DHCP server service status
+  ansible.builtin.shell: systemctl is-active dhcpd
+  register: dhcp_active
+  changed_when: false
+
+- name: Show DHCP server status
+  ansible.builtin.debug:
+    msg: "DHCP Server service status: {{ dhcp_active.stdout }}"
