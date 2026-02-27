@@ -1,0 +1,45 @@
+---
+- name: DHCP Server Monitoring and Maintenance
+  hosts: dhcp_servers
+  become: yes
+  tasks:
+    - name: Check DHCP service status
+      systemd:
+        name: dhcpd
+      register: dhcp_status
+
+    - name: Display DHCP service status
+      debug:
+        msg: "DHCP service is {{ dhcp_status.status.ActiveState }}"
+
+    - name: Check DHCP lease file
+      stat:
+        path: /var/lib/dhcpd/dhcpd.leases
+      register: lease_file
+
+    - name: Display current DHCP leases
+      shell: cat /var/lib/dhcpd/dhcpd.leases | grep -E "(lease|binding state|client-hostname)" | tail -20
+      register: current_leases
+      when: lease_file.stat.exists
+
+    - name: Show active leases
+      debug:
+        msg: "{{ current_leases.stdout_lines }}"
+      when: lease_file.stat.exists and current_leases.stdout_lines is defined
+
+    - name: Check DHCP log entries
+      shell: journalctl -u dhcpd --no-pager -n 10
+      register: dhcp_logs
+
+    - name: Display recent DHCP logs
+      debug:
+        msg: "{{ dhcp_logs.stdout_lines }}"
+
+    - name: Verify firewall configuration
+      shell: firewall-cmd --list-services | grep dhcp
+      register: firewall_check
+      ignore_errors: yes
+
+    - name: Display firewall status
+      debug:
+        msg: "DHCP service is {{ 'enabled' if firewall_check.rc == 0 else 'not enabled' }} in firewall"
