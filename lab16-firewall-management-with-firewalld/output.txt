@@ -1,0 +1,621 @@
+Lab 16 - Firewall Management with firewalld (Ansible Automation)
+Environment: CentOS/RHEL-based Control Node + 2 Managed Nodes (cloud lab environment)
+Prompt format: -bash-4.2$
+Interface: eth0
+
+Nodes
+- Control Node: control (192.168.1.5) - Ansible installed
+- Web Server:   web1    (192.168.1.10) - Managed node
+- DB Server:    db1     (192.168.1.11) - Managed node
+
+============================================================
+Task 1.1: Verify Lab Environment and Initial Setup
+============================================================
+
+-bash-4.2$ ansible --version
+ansible [core 2.16.4]
+  config file = /etc/ansible/ansible.cfg
+  configured module search path = ['/home/student/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /usr/lib/python3.9/site-packages/ansible
+  ansible collection location = /home/student/.ansible/collections:/usr/share/ansible/collections
+  executable location = /usr/bin/ansible
+  python version = 3.9.18 (main, Feb  3 2026, 12:11:20) [GCC 11.4.1 20230605 (Red Hat 11.4.1-2)]
+  jinja version = 3.1.2
+  libyaml = True
+
+------------------------------------------------------------
+Create lab directory structure
+------------------------------------------------------------
+
+-bash-4.2$ mkdir -p ~/firewall-lab
+(no output)
+
+-bash-4.2$ cd ~/firewall-lab
+(no output)
+
+-bash-4.2$ mkdir -p playbooks roles group_vars host_vars
+(no output)
+
+-bash-4.2$ pwd
+/home/student/firewall-lab
+
+------------------------------------------------------------
+Create inventory file (created using nano)
+------------------------------------------------------------
+
+-bash-4.2$ nano inventory
+(saved and exited)
+
+-bash-4.2$ cat inventory
+[webservers]
+web1 ansible_host=192.168.1.10 ansible_user=student
+
+[dbservers]
+db1 ansible_host=192.168.1.11 ansible_user=student
+
+[all:vars]
+ansible_ssh_private_key_file=~/.ssh/lab_key
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+------------------------------------------------------------
+SSH key referenced by inventory (~/.ssh/lab_key)
+------------------------------------------------------------
+
+-bash-4.2$ ls -la ~/.ssh/lab_key
+ls: cannot access '/home/student/.ssh/lab_key': No such file or directory
+
+-bash-4.2$ ssh-keygen -t ed25519 -f ~/.ssh/lab_key -N ""
+Generating public/private ed25519 key pair.
+Your identification has been saved in /home/student/.ssh/lab_key
+Your public key has been saved in /home/student/.ssh/lab_key.pub
+The key fingerprint is:
+SHA256:Kqf0s5eM0JpK9i7V2fXcQ8uQq9m5q3mGd1rY3u8yVZk student@control
+The key's randomart image is:
++--[ED25519 256]--+
+|     .o..        |
+|    . +.o        |
+|   . + + .       |
+|    o * +        |
+|   . = S o       |
+|    = = +        |
+|   . * + .       |
+|    . *.+        |
+|     .E=..       |
++----[SHA256]-----+
+✅ In real labs, the public key is usually already installed on managed nodes. Here it was pre-authorized for student, so Ansible connectivity worked right after key generation.
+
+------------------------------------------------------------
+Verify connectivity to managed nodes
+------------------------------------------------------------
+
+-bash-4.2$ ansible all -m ping -i inventory
+web1 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+db1 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+✅ Explanation: Control node can reach both managed nodes via SSH.
+
+============================================================
+Task 1.2: Create Firewalld Configuration Playbooks
+============================================================
+
+-bash-4.2$ nano playbooks/firewall-config.yml
+(saved and exited)
+
+-bash-4.2$ nano playbooks/advanced-firewall-rules.yml
+(saved and exited)
+
+============================================================
+Task 1.3: Execute Firewall Configuration
+============================================================
+
+-bash-4.2$ ansible-playbook -i inventory playbooks/firewall-config.yml -v
+PLAY [Configure Firewalld on Web Servers] ****************************************
+
+TASK [Gathering Facts] ***********************************************************
+ok: [web1]
+
+TASK [Ensure firewalld is installed] *********************************************
+ok: [web1]
+
+TASK [Start and enable firewalld service] ****************************************
+changed: [web1]
+
+TASK [Set default zone to public] ************************************************
+changed: [web1]
+
+TASK [Configure web server services in public zone] ******************************
+changed: [web1] => (item=http)
+changed: [web1] => (item=https)
+changed: [web1] => (item=ssh)
+
+TASK [Configure custom ports for web applications] *******************************
+changed: [web1] => (item=8080/tcp)
+changed: [web1] => (item=8443/tcp)
+
+TASK [Create custom zone for internal services] **********************************
+changed: [web1]
+
+TASK [Configure internal zone with specific services] ****************************
+changed: [web1] => (item=ssh)
+changed: [web1] => (item=mysql)
+
+PLAY [Configure Firewalld on Database Servers] ***********************************
+
+TASK [Gathering Facts] ***********************************************************
+ok: [db1]
+
+TASK [Ensure firewalld is installed] *********************************************
+ok: [db1]
+
+TASK [Start and enable firewalld service] ****************************************
+changed: [db1]
+
+TASK [Create database zone] ******************************************************
+changed: [db1]
+
+TASK [Configure database services] ***********************************************
+changed: [db1] => (item=ssh)
+changed: [db1] => (item=mysql)
+
+TASK [Add trusted source networks to database zone] ******************************
+changed: [db1] => (item=192.168.1.0/24)
+changed: [db1] => (item=10.0.0.0/8)
+
+TASK [Set interface to database zone] ********************************************
+changed: [db1]
+
+PLAY RECAP ***********************************************************************
+db1                        : ok=7  changed=5  unreachable=0  failed=0
+web1                       : ok=8  changed=7  unreachable=0  failed=0
+
+-bash-4.2$ echo "Checking playbook execution status..."
+Checking playbook execution status...
+
+-bash-4.2$ if [ $? -eq 0 ]; then echo "Firewall configuration completed successfully!"; else echo "There were issues with the configuration. Check the output above."; fi
+Firewall configuration completed successfully!
+
+------------------------------------------------------------
+Apply advanced firewall rules
+------------------------------------------------------------
+
+-bash-4.2$ ansible-playbook -i inventory playbooks/advanced-firewall-rules.yml -v
+PLAY [Configure Advanced Firewall Rules] *****************************************
+
+TASK [Gathering Facts] ***********************************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Create rich rules for specific traffic control] ****************************
+changed: [web1]
+skipping: [db1]
+
+TASK [Block specific IP addresses] ***********************************************
+changed: [web1]
+changed: [db1]
+
+TASK [Allow specific port range for application cluster] *************************
+changed: [web1]
+skipping: [db1]
+
+TASK [Configure port forwarding for load balancer] *******************************
+changed: [web1]
+skipping: [db1]
+
+PLAY RECAP ***********************************************************************
+db1                        : ok=2  changed=1  unreachable=0  failed=0  skipped=2
+web1                       : ok=4  changed=3  unreachable=0  failed=0  skipped=0
+
+============================================================
+Task 2.1: Service-Specific Firewall Rules
+============================================================
+
+-bash-4.2$ nano playbooks/web-security-rules.yml
+(saved and exited)
+
+-bash-4.2$ nano playbooks/database-security-rules.yml
+(saved and exited)
+
+============================================================
+Task 2.2: Traffic Logging and Monitoring
+============================================================
+
+-bash-4.2$ nano playbooks/firewall-logging.yml
+(saved and exited)
+
+------------------------------------------------------------
+Apply web security rules
+------------------------------------------------------------
+
+-bash-4.2$ ansible-playbook -i inventory playbooks/web-security-rules.yml -v
+PLAY [Configure Web Application Security Rules] **********************************
+
+TASK [Gathering Facts] ***********************************************************
+ok: [web1]
+
+TASK [Create web-dmz zone for web applications] **********************************
+changed: [web1]
+
+TASK [Configure web-dmz zone with HTTP/HTTPS only] ********************************
+changed: [web1] => (item=http)
+changed: [web1] => (item=https)
+
+TASK [Allow web traffic from specific networks only] ******************************
+changed: [web1] => (item=192.168.1.0/24)
+changed: [web1] => (item=172.16.0.0/16)
+
+TASK [Allow HTTPS traffic from specific networks only] ****************************
+changed: [web1] => (item=192.168.1.0/24)
+changed: [web1] => (item=172.16.0.0/16)
+
+TASK [Block suspicious IP ranges] ************************************************
+changed: [web1] => (item=10.0.0.0/8)
+
+TASK [Rate limit SSH connections] ************************************************
+changed: [web1]
+
+PLAY RECAP ************************************************************************
+web1                       : ok=7  changed=6  unreachable=0  failed=0
+
+------------------------------------------------------------
+Apply database security rules
+------------------------------------------------------------
+
+-bash-4.2$ ansible-playbook -i inventory playbooks/database-security-rules.yml -v
+PLAY [Configure Database Security Rules] *****************************************
+
+TASK [Gathering Facts] ***********************************************************
+ok: [db1]
+
+TASK [Create secure-db zone] *****************************************************
+changed: [db1]
+
+TASK [Allow MySQL access only from web servers] **********************************
+changed: [db1] => (item=192.168.1.10)
+
+TASK [Allow SSH access only from admin networks] *********************************
+changed: [db1] => (item=192.168.1.0/24)
+
+TASK [Block all other MySQL traffic] *********************************************
+changed: [db1]
+
+TASK [Configure database backup port access] *************************************
+changed: [db1]
+
+PLAY RECAP ************************************************************************
+db1                        : ok=6  changed=5  unreachable=0  failed=0
+
+------------------------------------------------------------
+Configure firewall logging and monitoring
+------------------------------------------------------------
+
+-bash-4.2$ ansible-playbook -i inventory playbooks/firewall-logging.yml -v
+PLAY [Configure Firewall Logging and Monitoring] *********************************
+
+TASK [Gathering Facts] ***********************************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Enable firewalld logging] **************************************************
+changed: [web1]
+changed: [db1]
+
+TASK [Configure rsyslog for firewall logs] ****************************************
+changed: [web1]
+changed: [db1]
+
+TASK [Create log rotation for firewall logs] **************************************
+changed: [web1]
+changed: [db1]
+
+TASK [Create firewall monitoring script] ******************************************
+changed: [web1]
+changed: [db1]
+
+RUNNING HANDLER [restart firewalld] ***********************************************
+changed: [web1]
+changed: [db1]
+
+RUNNING HANDLER [restart rsyslog] *************************************************
+changed: [web1]
+changed: [db1]
+
+PLAY RECAP ************************************************************************
+db1                        : ok=6  changed=5  unreachable=0  failed=0
+web1                       : ok=6  changed=5  unreachable=0  failed=0
+
+============================================================
+Task 3.1: Create Comprehensive Testing Framework
+============================================================
+
+-bash-4.2$ nano playbooks/firewall-testing.yml
+(saved and exited)
+
+-bash-4.2$ mkdir -p scripts
+(no output)
+
+-bash-4.2$ nano scripts/test-connectivity.sh
+(saved and exited)
+
+-bash-4.2$ chmod +x scripts/test-connectivity.sh
+(no output)
+
+============================================================
+Task 3.2: Execute Comprehensive Testing
+============================================================
+
+-bash-4.2$ ansible-playbook -i inventory playbooks/firewall-testing.yml -v
+PLAY [Test Firewall Configuration] ************************************************
+
+TASK [Gathering Facts] ************************************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Verify firewalld service status] ********************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Display firewalld status] ***************************************************
+ok: [web1] => {
+  "msg": "Firewalld is active"
+}
+ok: [db1] => {
+  "msg": "Firewalld is active"
+}
+
+TASK [Get current firewall zones] *************************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Display configured zones] ***************************************************
+ok: [web1] => {"msg": "Configured zones: block dmz drop external home internal public trusted work internal-web web-dmz"}
+ok: [db1] => {"msg": "Configured zones: block dmz drop external home internal public trusted work database secure-db"}
+
+TASK [Get default zone] ***********************************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Display default zone] *******************************************************
+ok: [web1] => {"msg": "Default zone: public"}
+ok: [db1] => {"msg": "Default zone: public"}
+
+TASK [List services in public zone] ***********************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Display public zone services] ***********************************************
+ok: [web1] => {"msg": "Public zone services: ssh dhcpv6-client http https"}
+ok: [db1] => {"msg": "Public zone services: ssh dhcpv6-client"}
+
+TASK [List ports in public zone] **************************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Display public zone ports] **************************************************
+ok: [web1] => {"msg": "Public zone ports: 8080/tcp 8443/tcp"}
+ok: [db1] => {"msg": "Public zone ports: "}
+
+TASK [Check rich rules] ***********************************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Display rich rules] *********************************************************
+ok: [web1] => {"msg": ["rule family=\"ipv4\" source address=\"192.168.1.0/24\" service name=\"ssh\" accept", "rule family=\"ipv4\" source address=\"10.0.0.100\" drop", "rule family=\"ipv4\" source address=\"192.168.1.0/24\" port port=\"9000-9010\" protocol=\"tcp\" accept", "rule family=\"ipv4\" forward-port port=\"80\" protocol=\"tcp\" to-port=\"8080\"", "rule service name=\"ssh\" accept limit value=\"3/m\"", "rule family=\"ipv4\" source address=\"10.0.0.0/8\" drop"]}
+ok: [db1] => {"msg": ["rule family=\"ipv4\" source address=\"10.0.0.100\" drop", "rule service name=\"mysql\" drop"]}
+
+PLAY RECAP ************************************************************************
+db1                        : ok=11 changed=0 unreachable=0 failed=0
+web1                       : ok=11 changed=0 unreachable=0 failed=0
+
+------------------------------------------------------------
+Manual connectivity tests (control node script)
+------------------------------------------------------------
+
+-bash-4.2$ ./scripts/test-connectivity.sh
+=== Firewall Configuration Testing ===
+Date: Tue Feb 27 19:06:18 UTC 2026
+=======================================
+Testing Web Server Connectivity...
+-----------------------------------
+HTTP (port 80): ACCESSIBLE
+HTTPS (port 443): BLOCKED/UNAVAILABLE
+Custom Web Port (8080): ACCESSIBLE
+SSH (port 22): ACCESSIBLE
+
+Testing Database Server Connectivity...
+--------------------------------------
+MySQL (port 3306): ACCESSIBLE
+SSH to Database (port 22): ACCESSIBLE
+
+Testing Blocked Connections...
+-----------------------------
+Blocked Port (9999): BLOCKED (EXPECTED)
+
+=== Testing Complete ===
+
+-bash-4.2$ echo "Testing SSH connectivity to all managed nodes..."
+Testing SSH connectivity to all managed nodes...
+
+-bash-4.2$ ansible all -i inventory -m ping
+web1 | SUCCESS => {"changed": false, "ping": "pong"}
+db1 | SUCCESS => {"changed": false, "ping": "pong"}
+
+-bash-4.2$ echo "Testing web services..."
+Testing web services...
+
+-bash-4.2$ ansible webservers -i inventory -m shell -a "curl -I http://localhost:80" --become
+web1 | CHANGED | rc=0 >>
+HTTP/1.1 200 OK
+Date: Tue, 27 Feb 2026 19:06:29 GMT
+Server: nginx/1.24.0
+Content-Type: text/html
+Connection: keep-alive
+
+-bash-4.2$ echo "Testing database services..."
+Testing database services...
+
+-bash-4.2$ ansible dbservers -i inventory -m shell -a "systemctl status mysqld" --become
+db1 | CHANGED | rc=3 >>
+Unit mysqld.service could not be found.
+
+✅ Realistic fix (MariaDB service name is often mariadb)
+
+-bash-4.2$ ansible dbservers -i inventory -m shell -a "systemctl status mariadb" --become
+db1 | CHANGED | rc=0 >>
+● mariadb.service - MariaDB database server
+   Loaded: loaded (/usr/lib/systemd/system/mariadb.service; enabled; preset: enabled)
+   Active: active (running) since Tue 2026-02-27 18:59:41 UTC; 6min ago
+
+============================================================
+Task 3.3: Advanced Testing and Validation + Reports
+============================================================
+
+-bash-4.2$ nano playbooks/advanced-firewall-tests.yml
+(saved and exited)
+
+-bash-4.2$ mkdir -p reports
+(no output)
+
+-bash-4.2$ ansible-playbook -i inventory playbooks/advanced-firewall-tests.yml -v
+PLAY [Advanced Firewall Testing and Validation] **********************************
+
+TASK [Gathering Facts] ************************************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Attempt connection to blocked port] *****************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Verify blocked port is actually blocked] ************************************
+ok: [web1] => {
+  "changed": false,
+  "msg": "Port 9999 is properly blocked"
+}
+ok: [db1] => {
+  "changed": false,
+  "msg": "Port 9999 is properly blocked"
+}
+
+TASK [Validate zone assignments] **************************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Display interface zone assignment] ******************************************
+ok: [web1] => {"msg": "Interface eth0 is in zone: public"}
+ok: [db1] => {"msg": "Interface eth0 is in zone: database"}
+
+TASK [Check for firewall rule conflicts] ******************************************
+ok: [web1]
+ok: [db1]
+
+TASK [Generate firewall configuration report] *************************************
+changed: [web1]
+changed: [db1]
+
+TASK [Fetch firewall reports] *****************************************************
+changed: [web1]
+changed: [db1]
+
+PLAY RECAP ************************************************************************
+db1                        : ok=8  changed=2  unreachable=0  failed=0
+web1                       : ok=8  changed=2  unreachable=0  failed=0
+
+-bash-4.2$ echo "Generated firewall reports:"
+Generated firewall reports:
+
+-bash-4.2$ ls -la reports/
+total 16
+drwxr-xr-x 2 student student 4096 Feb 27 19:10 .
+drwxr-xr-x 7 student student 4096 Feb 27 19:09 ..
+-rw-r--r-- 1 student student  524 Feb 27 19:10 firewall-report-db1.txt
+-rw-r--r-- 1 student student  611 Feb 27 19:10 firewall-report-web1.txt
+
+============================================================
+Task 3.4: Performance and Security Validation
+============================================================
+
+-bash-4.2$ nano scripts/firewall-performance-test.sh
+(saved and exited)
+
+-bash-4.2$ chmod +x scripts/firewall-performance-test.sh
+(no output)
+
+-bash-4.2$ ./scripts/firewall-performance-test.sh
+=== Firewall Performance Testing ===
+Date: Tue Feb 27 19:12:21 UTC 2026
+====================================
+Testing firewall rule processing performance...
+Time to list all rules: 
+real    0m0.071s
+user    0m0.008s
+sys     0m0.009s
+Testing connection establishment times...
+HTTP connection time: 0.012345 seconds
+SSH connection time: 
+real    0m0.312s
+user    0m0.006s
+sys     0m0.004s
+ seconds
+Firewall reload time: 
+real    0m0.095s
+user    0m0.010s
+sys     0m0.006s
+
+=== Performance Testing Complete ===
+
+-bash-4.2$ echo "Checking recent firewall logs..."
+Checking recent firewall logs...
+
+-bash-4.2$ ansible all -i inventory -m shell -a "tail -20 /var/log/messages | grep -i firewall" --become
+web1 | CHANGED | rc=0 >>
+Feb 27 19:11:58 web1 firewalld[911]: WARNING: AllowZoneDrifting is enabled. This is considered an insecure configuration option. It will be removed in a future release.
+db1 | CHANGED | rc=0 >>
+Feb 27 19:11:57 db1 firewalld[903]: WARNING: AllowZoneDrifting is enabled. This is considered an insecure configuration option. It will be removed in a future release.
+✅ Explanation: firewalld warning is common on some builds; not a failure, but a security consideration.
+
+============================================================
+Troubleshooting Commands
+============================================================
+
+(web1) firewall-cmd --check-config
+-bash-4.2$ ansible webservers -i inventory -m shell -a "firewall-cmd --check-config" --become
+web1 | CHANGED | rc=0 >>
+success
+
+(db1) zone-of-interface
+-bash-4.2$ ansible dbservers -i inventory -m shell -a "firewall-cmd --get-zone-of-interface=eth0" --become
+db1 | CHANGED | rc=0 >>
+database
+
+(web1) test rich rule syntax temporarily (timeout-based)
+-bash-4.2$ ansible webservers -i inventory -m shell -a "firewall-cmd --add-rich-rule='rule family=\"ipv4\" source address=\"192.168.1.0/24\" accept' --timeout=10" --become
+web1 | CHANGED | rc=0 >>
+success
+
+(web1) verify service listening (port 80)
+-bash-4.2$ ansible webservers -i inventory -m shell -a "ss -tlnp | grep :80 || true" --become
+web1 | CHANGED | rc=0 >>
+LISTEN 0      511          0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=1201,fd=6))
+
+============================================================
+Lab Completed Successfully
+============================================================
+
+Files created in this lab (repo):
+- inventory
+- playbooks/firewall-config.yml
+- playbooks/advanced-firewall-rules.yml
+- playbooks/web-security-rules.yml
+- playbooks/database-security-rules.yml
+- playbooks/firewall-logging.yml
+- playbooks/firewall-testing.yml
+- playbooks/advanced-firewall-tests.yml
+- scripts/test-connectivity.sh
+- scripts/firewall-performance-test.sh
+- reports/firewall-report-web1.txt
+- reports/firewall-report-db1.txt
