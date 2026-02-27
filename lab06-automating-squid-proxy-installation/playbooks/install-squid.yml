@@ -1,0 +1,81 @@
+---
+- name: Install and Configure Squid Proxy Server
+  hosts: proxy_servers
+  become: yes
+  vars:
+    squid_port: 3128
+    squid_cache_dir: /var/spool/squid
+    squid_cache_size: 1000
+    allowed_networks:
+      - 192.168.1.0/24
+      - 10.0.0.0/8
+
+  tasks:
+    - name: Update system packages
+      yum:
+        name: "*"
+        state: latest
+        update_cache: yes
+      tags: system_update
+
+    - name: Install EPEL repository
+      yum:
+        name: epel-release
+        state: present
+      tags: prerequisites
+
+    - name: Install Squid proxy server
+      yum:
+        name: squid
+        state: present
+      tags: install_squid
+
+    - name: Install additional utilities
+      yum:
+        name:
+          - wget
+          - curl
+          - net-tools
+        state: present
+      tags: utilities
+
+    - name: Create squid cache directory
+      file:
+        path: "{{ squid_cache_dir }}"
+        state: directory
+        owner: squid
+        group: squid
+        mode: '0755'
+      tags: cache_setup
+
+    - name: Initialize squid cache directories
+      command: squid -z
+      args:
+        creates: "{{ squid_cache_dir }}/00"
+      become_user: squid
+      tags: cache_init
+
+    - name: Enable and start squid service
+      systemd:
+        name: squid
+        enabled: yes
+        state: started
+      tags: service_management
+
+    - name: Configure firewall for squid
+      firewalld:
+        port: "{{ squid_port }}/tcp"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      tags: firewall_config
+
+    - name: Display squid service status
+      command: systemctl status squid
+      register: squid_status
+      tags: verification
+
+    - name: Show squid status
+      debug:
+        var: squid_status.stdout_lines
+      tags: verification
