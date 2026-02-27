@@ -1,0 +1,16 @@
+---
+# handlers file for apache-role
+
+- name: restart apache
+  service:
+    name: "{{ apache_service }}"
+    state: restarted
+  become: yes
+  listen: restart apache
+
+- name: reload apache
+  service:
+    name: "{{ apache_service }}"
+    state: reloaded
+  become: yes
+  listen: reload apache
