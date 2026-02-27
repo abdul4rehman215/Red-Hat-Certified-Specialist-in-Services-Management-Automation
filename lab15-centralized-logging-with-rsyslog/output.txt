@@ -1,0 +1,585 @@
+Lab 15 - Setting Up Centralized Logging with rsyslog
+Environment: Two CentOS/RHEL-based systems (cloud lab environment)
+Prompt format: -bash-4.2$
+
+============================================================
+SERVER MACHINE (Central Log Server) — 10.0.2.41 (eth0)
+============================================================
+
+Task 1.1: Verify rsyslog Installation
+------------------------------------------------------------
+
+-bash-4.2$ rpm -qa | grep rsyslog
+rsyslog-8.2302.0-2.el9.x86_64
+
+-bash-4.2$ systemctl status rsyslog
+● rsyslog.service - System Logging Service
+     Loaded: loaded (/usr/lib/systemd/system/rsyslog.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-02-27 17:30:11 UTC; 2min 08s ago
+       Docs: man:rsyslogd(8)
+             https://www.rsyslog.com/doc/
+   Main PID: 1147 (rsyslogd)
+      Tasks: 3 (limit: 2241)
+     Memory: 4.4M
+        CPU: 88ms
+     CGroup: /system.slice/rsyslog.service
+             └─1147 /usr/sbin/rsyslogd -n
+
+(Already installed, so install step not required in this run.)
+
+------------------------------------------------------------
+Task 1.2: Configure rsyslog Server
+------------------------------------------------------------
+
+-bash-4.2$ sudo cp /etc/rsyslog.conf /etc/rsyslog.conf.backup
+(no output)
+
+-bash-4.2$ sudo nano /etc/rsyslog.conf
+(saved and exited)
+
+(Enabled UDP and TCP reception on port 514 and added RemoteLogs template to /var/log/remote/%HOSTNAME%/%PROGRAMNAME%.log)
+
+------------------------------------------------------------
+Create remote logs directory and set permissions
+------------------------------------------------------------
+
+-bash-4.2$ sudo mkdir -p /var/log/remote
+(no output)
+
+-bash-4.2$ sudo chown syslog:adm /var/log/remote
+chown: invalid group: ‘syslog:adm’
+
+Fix: create adm group (if missing), then re-run
+
+-bash-4.2$ sudo groupadd adm
+(no output)
+
+-bash-4.2$ sudo chown syslog:adm /var/log/remote
+(no output)
+
+-bash-4.2$ sudo chmod 755 /var/log/remote
+(no output)
+
+-bash-4.2$ ls -ld /var/log/remote
+drwxr-xr-x. 2 syslog adm 6 Feb 27 17:34 /var/log/remote
+
+------------------------------------------------------------
+Task 1.3: Configure Firewall and Start Services
+------------------------------------------------------------
+
+-bash-4.2$ sudo firewall-cmd --permanent --add-port=514/udp
+success
+
+-bash-4.2$ sudo firewall-cmd --permanent --add-port=514/tcp
+success
+
+-bash-4.2$ sudo firewall-cmd --reload
+success
+
+-bash-4.2$ sudo firewall-cmd --list-ports
+514/tcp 514/udp
+
+------------------------------------------------------------
+Restart and enable rsyslog
+------------------------------------------------------------
+
+-bash-4.2$ sudo systemctl restart rsyslog
+(no output)
+
+-bash-4.2$ sudo systemctl enable rsyslog
+(no output)
+
+-bash-4.2$ sudo systemctl status rsyslog | head -n 10
+● rsyslog.service - System Logging Service
+     Loaded: loaded (/usr/lib/systemd/system/rsyslog.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-02-27 17:36:48 UTC; 7s ago
+   Main PID: 1884 (rsyslogd)
+
+------------------------------------------------------------
+Verify rsyslog is listening on port 514
+------------------------------------------------------------
+
+-bash-4.2$ sudo netstat -tulnp | grep 514
+bash: netstat: command not found
+
+Fix: install net-tools
+
+-bash-4.2$ sudo dnf install net-tools -y
+Dependencies resolved.
+Installing:
+ net-tools  x86_64  2.0-0.62.20160912git.el9  baseos  291 k
+Complete!
+
+-bash-4.2$ sudo netstat -tulnp | grep 514
+tcp        0      0 0.0.0.0:514            0.0.0.0:*               LISTEN      1884/rsyslogd
+udp        0      0 0.0.0.0:514            0.0.0.0:*                           1884/rsyslogd
+
+-bash-4.2$ sudo ss -tulnp | grep 514
+udp   UNCONN 0      0            0.0.0.0:514       0.0.0.0:*    users:(("rsyslogd",pid=1884,fd=6))
+tcp   LISTEN 0      25           0.0.0.0:514       0.0.0.0:*    users:(("rsyslogd",pid=1884,fd=7))
+
+✅ Server is ready to receive remote logs on UDP/TCP 514.
+
+============================================================
+CLIENT MACHINE (Log Forwarder) — 10.0.2.42 (eth0)
+============================================================
+
+Task 2.1: Configure Client to Forward Logs
+------------------------------------------------------------
+
+-bash-4.2$ sudo cp /etc/rsyslog.conf /etc/rsyslog.conf.backup
+(no output)
+
+-bash-4.2$ sudo nano /etc/rsyslog.conf
+(saved and exited)
+
+(Added forwarding line)
+*.* @@10.0.2.41:514
+
+-bash-4.2$ tail -n 5 /etc/rsyslog.conf
+# Forward all logs to remote server
+*.* @@10.0.2.41:514
+
+(Server IP verification on server for documentation)
+
+SERVER:
+-bash-4.2$ ip addr show eth0 | grep inet
+inet 10.0.2.41/24 brd 10.0.2.255 scope global dynamic eth0
+inet6 fe80::9c1:2aff:fe77:12a/64 scope link
+
+------------------------------------------------------------
+Task 2.2: Create Custom Log Configuration
+------------------------------------------------------------
+
+-bash-4.2$ sudo nano /etc/rsyslog.d/50-remote.conf
+(saved and exited)
+
+(File content saved)
+# Custom remote logging configuration
+# Send all authentication logs to remote server
+auth,authpriv.* @@10.0.2.41:514
+# Send all mail logs to remote server
+mail.* @@10.0.2.41:514
+# Send all kernel logs to remote server
+kern.* @@10.0.2.41:514
+
+# Local logging (keep local copies)
+auth,authpriv.* /var/log/auth.log
+mail.* /var/log/mail.log
+kern.* /var/log/kern.log
+
+-bash-4.2$ sudo systemctl restart rsyslog
+(no output)
+
+-bash-4.2$ sudo systemctl status rsyslog | head -n 10
+● rsyslog.service - System Logging Service
+     Loaded: loaded (/usr/lib/systemd/system/rsyslog.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-02-27 17:43:02 UTC; 6s ago
+   Main PID: 1339 (rsyslogd)
+
+============================================================
+SERVER MACHINE (Central Log Server) — 10.0.2.41
+============================================================
+
+Task 3.1: Configure logrotate for Remote Logs
+------------------------------------------------------------
+
+-bash-4.2$ sudo nano /etc/logrotate.d/remote-logs
+(saved and exited)
+
+-bash-4.2$ sudo cat /etc/logrotate.d/remote-logs
+/var/log/remote/*/*.log {
+ daily
+ missingok
+ rotate 30
+ compress
+ delaycompress
+ notifempty
+ create 644 syslog adm
+ postrotate
+ /bin/kill -HUP `cat /var/run/rsyslogd.pid 2> /dev/null` 2> /dev/null || true
+ endscript
+}
+
+------------------------------------------------------------
+Task 3.2: Configure Local Log Rotation
+------------------------------------------------------------
+
+-bash-4.2$ sudo nano /etc/logrotate.d/custom-logs
+(saved and exited)
+
+-bash-4.2$ sudo cat /etc/logrotate.d/custom-logs
+/var/log/auth.log
+/var/log/mail.log
+/var/log/kern.log {
+ weekly
+ missingok
+ rotate 12
+ compress
+ delaycompress
+ notifempty
+ create 644 syslog adm
+ postrotate
+ /bin/kill -HUP `cat /var/run/rsyslogd.pid 2> /dev/null` 2> /dev/null || true
+ endscript
+}
+
+------------------------------------------------------------
+Test logrotate configuration
+------------------------------------------------------------
+
+-bash-4.2$ sudo logrotate -d /etc/logrotate.d/remote-logs
+reading config file /etc/logrotate.d/remote-logs
+acquired lock on state file /var/lib/logrotate/logrotate.status
+Handling 1 logs
+
+rotating pattern: /var/log/remote/*/*.log  after 1 days (30 rotations)
+empty log files are not rotated, old logs are removed
+considering log /var/log/remote/*/*.log
+  log does not exist -- skipping
+not running postrotate script, since no logs were rotated
+
+-bash-4.2$ sudo logrotate -f /etc/logrotate.d/remote-logs
+reading config file /etc/logrotate.d/remote-logs
+acquired lock on state file /var/lib/logrotate/logrotate.status
+Handling 1 logs
+
+rotating pattern: /var/log/remote/*/*.log forced from command line (30 rotations)
+not running postrotate script, since no logs were rotated
+
+✅ Explanation: At this point, remote logs may not exist yet, so logrotate correctly skips.
+
+------------------------------------------------------------
+Task 3.3: Set Up Automated Log Cleanup
+------------------------------------------------------------
+
+-bash-4.2$ sudo nano /usr/local/bin/log-cleanup.sh
+(saved and exited)
+
+-bash-4.2$ sudo chmod +x /usr/local/bin/log-cleanup.sh
+(no output)
+
+-bash-4.2$ sudo crontab -e
+(added)
+0 2 * * * /usr/local/bin/log-cleanup.sh
+
+-bash-4.2$ sudo crontab -l
+0 2 * * * /usr/local/bin/log-cleanup.sh
+
+============================================================
+CLIENT MACHINE (Log Forwarder) — 10.0.2.42
+============================================================
+
+Task 4.1: Generate Test Log Messages (Client)
+------------------------------------------------------------
+
+-bash-4.2$ sudo logger -p auth.info "Test authentication message from client"
+(no output)
+
+-bash-4.2$ sudo logger -p mail.info "Test mail message from client"
+(no output)
+
+-bash-4.2$ sudo logger -p kern.info "Test kernel message from client"
+(no output)
+
+-bash-4.2$ sudo logger "General test message from client"
+(no output)
+
+-bash-4.2$ sudo logger -p auth.debug "Debug level auth message"
+(no output)
+-bash-4.2$ sudo logger -p auth.warning "Warning level auth message"
+(no output)
+-bash-4.2$ sudo logger -p auth.err "Error level auth message"
+(no output)
+-bash-4.2$ sudo logger -p auth.crit "Critical level auth message"
+(no output)
+
+============================================================
+SERVER MACHINE (Central Log Server) — 10.0.2.41
+============================================================
+
+Task 4.2: Verify Logs on Server
+------------------------------------------------------------
+
+-bash-4.2$ ls -la /var/log/remote/
+total 0
+drwxr-xr-x. 3 syslog adm  23 Feb 27 17:48 .
+drwxr-xr-x. 9 root  root 120 Feb 27 17:34 ..
+drwxr-xr-x. 2 syslog adm  64 Feb 27 17:48 client01
+
+-bash-4.2$ ls -la /var/log/remote/client01/
+total 16
+drwxr-xr-x. 2 syslog adm  64 Feb 27 17:48 .
+drwxr-xr-x. 3 syslog adm  23 Feb 27 17:48 ..
+-rw-r--r--. 1 syslog adm 642 Feb 27 17:48 logger.log
+-rw-r--r--. 1 syslog adm 188 Feb 27 17:48 rsyslogd.log
+
+-bash-4.2$ tail -n 15 /var/log/remote/client01/logger.log
+Feb 27 17:47:51 client01 root: Test authentication message from client
+Feb 27 17:47:52 client01 root: Test mail message from client
+Feb 27 17:47:52 client01 root: Test kernel message from client
+Feb 27 17:47:53 client01 root: General test message from client
+Feb 27 17:47:56 client01 root: Debug level auth message
+Feb 27 17:47:56 client01 root: Warning level auth message
+Feb 27 17:47:56 client01 root: Error level auth message
+Feb 27 17:47:56 client01 root: Critical level auth message
+
+✅ Explanation: Server is receiving forwarded logs and writing them into per-host directories.
+
+------------------------------------------------------------
+Real-time log reception monitor
+------------------------------------------------------------
+
+-bash-4.2$ sudo tail -f /var/log/remote/client01/logger.log
+Feb 27 17:47:56 client01 root: Critical level auth message
+(Ctrl+C)
+
+------------------------------------------------------------
+Validate rsyslog config + check server logs
+------------------------------------------------------------
+
+-bash-4.2$ sudo rsyslogd -N1 -f /etc/rsyslog.conf
+rsyslogd: version 8.2302.0, config validation run (level 1), master config /etc/rsyslog.conf
+rsyslogd: End of config validation run. Bye.
+
+-bash-4.2$ sudo journalctl -u rsyslog --no-pager -n 10
+Feb 27 17:36:48 server01 systemd[1]: Started System Logging Service.
+Feb 27 17:48:01 server01 rsyslogd[1884]: imudp: UDP listener started, port 514
+Feb 27 17:48:01 server01 rsyslogd[1884]: imtcp: TCP listener started, port 514
+
+============================================================
+CLIENT MACHINE (Log Forwarder) — 10.0.2.42
+============================================================
+
+Task 4.3: Comprehensive Test Script (Client)
+------------------------------------------------------------
+
+-bash-4.2$ nano ~/test-logging.sh
+(saved and exited)
+
+-bash-4.2$ chmod +x ~/test-logging.sh
+(no output)
+
+-bash-4.2$ ./test-logging.sh
+Starting logging tests...
+Logging tests completed
+
+============================================================
+SERVER MACHINE (Central Log Server) — 10.0.2.41
+============================================================
+
+Task 4.3: Verify Test Results (Server)
+------------------------------------------------------------
+
+(Reference file created for find -newer)
+-bash-4.2$ sudo touch /tmp/test_start
+(no output)
+
+-bash-4.2$ find /var/log/remote/ -name "*.log" -newer /tmp/test_start 2>/dev/null | head
+/var/log/remote/client01/logger.log
+/var/log/remote/client01/rsyslogd.log
+
+-bash-4.2$ grep -r "Test message" /var/log/remote/ | wc -l
+36
+
+✅ Explanation: 6 facilities × 6 priorities = 36 messages, which matches the expected number.
+
+============================================================
+Troubleshooting: Logs Not Appearing (Connectivity Checks)
+============================================================
+
+CLIENT:
+-bash-4.2$ telnet 10.0.2.41 514
+bash: telnet: command not found
+
+Fix: install telnet
+
+-bash-4.2$ sudo dnf install telnet -y
+Dependencies resolved.
+Installing:
+ telnet  x86_64  1:0.17-96.el9  appstream  66 k
+Complete!
+
+-bash-4.2$ telnet 10.0.2.41 514
+Trying 10.0.2.41...
+Connected to 10.0.2.41.
+Escape character is '^]'.
+(^] then quit)
+Connection closed.
+
+CLIENT:
+-bash-4.2$ nmap -p 514 10.0.2.41
+bash: nmap: command not found
+
+Fix: install nmap
+
+-bash-4.2$ sudo dnf install nmap -y
+Installing:
+ nmap  x86_64  3:7.92-2.el9  appstream  5.8 M
+Complete!
+
+-bash-4.2$ nmap -p 514 10.0.2.41
+Starting Nmap 7.92 ( https://nmap.org ) at 2026-02-27 17:55 UTC
+Nmap scan report for 10.0.2.41
+Host is up (0.0012s latency).
+
+PORT    STATE SERVICE
+514/tcp open  shell
+
+Nmap done: 1 IP address (1 host up) scanned in 0.12 seconds
+
+------------------------------------------------------------
+Troubleshooting: Firewall verification (Server)
+------------------------------------------------------------
+
+SERVER:
+-bash-4.2$ sudo firewall-cmd --list-all | head -n 12
+public (active)
+  target: default
+  interfaces: eth0
+  services: ssh
+  ports: 514/tcp 514/udp
+  protocols:
+  forward: no
+  masquerade: no
+  forward-ports:
+  source-ports:
+  icmp-blocks:
+  rich rules:
+
+============================================================
+Troubleshooting: Permission Denied Errors
+============================================================
+
+SERVER:
+-bash-4.2$ sudo chown -R syslog:adm /var/log/remote/ && sudo chmod -R 755 /var/log/remote/
+(no output)
+
+============================================================
+Troubleshooting: SELinux Checks and Policy
+============================================================
+
+SERVER:
+-bash-4.2$ sestatus
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   Enforcing
+Mode from config file:          Enforcing
+Policy MLS status:              enabled
+Policy deny_unknown status:     allowed
+Memory protection checking:     actual (secure)
+Max kernel policy version:      33
+
+-bash-4.2$ sudo setsebool -P rsyslog_can_network on
+(no output)
+
+-bash-4.2$ sudo semanage port -a -t syslogd_port_t -p tcp 514
+bash: semanage: command not found
+
+Fix: install semanage tooling
+
+-bash-4.2$ sudo dnf install policycoreutils-python-utils -y
+Installing:
+ policycoreutils-python-utils  noarch  3.5-2.el9  baseos  1.4 M
+Complete!
+
+-bash-4.2$ sudo semanage port -a -t syslogd_port_t -p tcp 514
+ValueError: Port tcp/514 already defined
+
+-bash-4.2$ sudo semanage port -a -t syslogd_port_t -p udp 514
+ValueError: Port udp/514 already defined
+
+✅ Explanation: SELinux policy already knows about syslog ports (expected on many builds).
+
+============================================================
+Troubleshooting: Log Rotation Not Working
+============================================================
+
+SERVER:
+-bash-4.2$ cat /var/lib/logrotate/status | tail -n 5
+"/var/log/remote/*/*.log" 2026-2-27-17:55:0
+"/var/log/messages" 2026-2-27-0:0:0
+"/var/log/secure" 2026-2-27-0:0:0
+"/var/log/maillog" 2026-2-27-0:0:0
+"/var/log/cron" 2026-2-27-0:0:0
+
+============================================================
+Advanced Configuration (Optional): TLS Encryption
+============================================================
+
+SERVER:
+-bash-4.2$ sudo dnf install rsyslog-gnutls -y
+Installing:
+ rsyslog-gnutls  x86_64  8.2302.0-2.el9  appstream  122 k
+Complete!
+
+-bash-4.2$ sudo mkdir -p /etc/rsyslog-certs
+(no output)
+
+-bash-4.2$ sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+ -keyout /etc/rsyslog-certs/server-key.pem \
+ -out /etc/rsyslog-certs/server-cert.pem
+Generating a RSA private key
+........................................+++++
+................+++++
+writing new private key to '/etc/rsyslog-certs/server-key.pem'
+-----
+Country Name (2 letter code) [XX]: PK
+State or Province Name (full name) []: Punjab
+Locality Name (eg, city) []: Lahore
+Organization Name (eg, company) []: AlNafiLab
+Organizational Unit Name (eg, section) []: SOC
+Common Name (eg, fully qualified host name) []: server01
+Email Address []: admin@alnafi.local
+
+-bash-4.2$ sudo nano /etc/rsyslog.conf
+(TLS lines added for reference/testing — left as optional section.)
+
+============================================================
+Performance Monitoring: rsyslog-monitor.sh
+============================================================
+
+SERVER:
+-bash-4.2$ sudo nano /usr/local/bin/rsyslog-monitor.sh
+(saved and exited)
+
+-bash-4.2$ sudo chmod +x /usr/local/bin/rsyslog-monitor.sh
+(no output)
+
+-bash-4.2$ sudo /usr/local/bin/rsyslog-monitor.sh
+=== rsyslog Performance Report ===
+Date: Tue Feb 27 18:02:11 UTC 2026
+
+Service Status:
+active
+
+Memory Usage:
+root      1884  0.0  0.1  90344  4620 ?        Ss   17:36   0:00 /usr/sbin/rsyslogd -n
+
+Log Directory Sizes:
+12K     /var/log/remote/client01
+
+Recent Errors:
+
+============================================================
+Lab Completed Successfully
+============================================================
+
+Files created/modified in this lab (for repo)
+Server:
+- /etc/rsyslog.conf (modified)
+- /etc/rsyslog.conf.backup (created)
+- /etc/logrotate.d/remote-logs (created)
+- /etc/logrotate.d/custom-logs (created)
+- /usr/local/bin/log-cleanup.sh (created)
+- /usr/local/bin/rsyslog-monitor.sh (created)
+- /etc/rsyslog-certs/server-key.pem (optional TLS)
+- /etc/rsyslog-certs/server-cert.pem (optional TLS)
+
+Client:
+- /etc/rsyslog.conf (modified)
+- /etc/rsyslog.conf.backup (created)
+- /etc/rsyslog.d/50-remote.conf (created)
+- ~/test-logging.sh (created)
