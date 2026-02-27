@@ -1,0 +1,27 @@
+---
+- name: Multi-Vault Environment Deployment
+  hosts: localhost
+  vars_files:
+    - secrets.yml # Default vault
+    - prod_secrets.yml # Production vault
+
+  tasks:
+    - name: Display environment-specific database password
+      debug:
+        msg: "Production DB Password is configured"
+      # Note: Never actually display passwords in debug messages
+
+    - name: Create environment-specific config
+      copy:
+        content: |
+          # Development Database
+          DEV_DB_PASSWORD={{ db_password }}
+
+          # Production Database
+          PROD_DB_PASSWORD={{ prod_db_password }}
+
+          # API Keys
+          DEV_API_KEY={{ api_key }}
+          PROD_API_KEY={{ prod_api_key }}
+        dest: /tmp/multi_env_config.env
+        mode: '0600'
