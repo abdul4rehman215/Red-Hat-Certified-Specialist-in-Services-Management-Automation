@@ -1,0 +1,661 @@
+Lab 13 - Automating MariaDB Backup and Restore
+Environment: Ubuntu 24.04.1 LTS (Cloud lab environment)
+User: toor
+Host: ip-172-31-10-193
+Prompt format: toor@ip-172-31-10-193:~$
+
+============================================================
+Task 1.1: Verify MariaDB Service
+============================================================
+
+toor@ip-172-31-10-193:~$ sudo systemctl status mariadb
+● mariadb.service - MariaDB 10.11.6 database server
+     Loaded: loaded (/usr/lib/systemd/system/mariadb.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-02-27 16:21:08 UTC; 3min 14s ago
+       Docs: man:mariadbd(8)
+             https://mariadb.com/kb/en/library/systemd/
+   Main PID: 8912 (mariadbd)
+     Status: "Taking your SQL requests now..."
+      Tasks: 9 (limit: 2221)
+     Memory: 149.5M
+        CPU: 1.268s
+     CGroup: /system.slice/mariadb.service
+             └─8912 /usr/sbin/mariadbd
+
+toor@ip-172-31-10-193:~$ sudo systemctl start mariadb
+(no output)
+
+toor@ip-172-31-10-193:~$ sudo systemctl enable mariadb
+Synchronizing state of mariadb.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable mariadb
+
+============================================================
+Task 1.1: Create Ansible Project Structure
+============================================================
+
+toor@ip-172-31-10-193:~$ mkdir -p ~/mariadb-automation/{playbooks,roles,inventory,backups,scripts}
+(no output)
+
+toor@ip-172-31-10-193:~$ cd ~/mariadb-automation
+(no output)
+
+toor@ip-172-31-10-193:~/mariadb-automation$ pwd
+/home/toor/mariadb-automation
+
+============================================================
+Task 1.1: Create Inventory File
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ nano inventory/hosts
+(file saved)
+
+toor@ip-172-31-10-193:~/mariadb-automation$ cat inventory/hosts
+[database_servers]
+localhost ansible_connection=local
+
+[database_servers:vars]
+ansible_user=root
+ansible_become=yes
+
+============================================================
+Task 1.2: Create Sample Databases and Data
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo mysql -u root << 'EOF'
+CREATE DATABASE IF NOT EXISTS company_db;
+CREATE DATABASE IF NOT EXISTS inventory_db;
+CREATE DATABASE IF NOT EXISTS users_db;
+
+USE company_db;
+CREATE TABLE employees (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ name VARCHAR(100),
+ department VARCHAR(50),
+ salary DECIMAL(10,2)
+);
+INSERT INTO employees (name, department, salary) VALUES
+('John Doe', 'IT', 75000.00),
+('Jane Smith', 'HR', 65000.00),
+('Mike Johnson', 'Finance', 80000.00);
+
+USE inventory_db;
+CREATE TABLE products (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ name VARCHAR(100),
+ quantity INT,
+ price DECIMAL(8,2)
+);
+INSERT INTO products (name, quantity, price) VALUES
+('Laptop', 50, 999.99),
+('Mouse', 200, 25.50),
+('Keyboard', 150, 75.00);
+
+USE users_db;
+CREATE TABLE user_accounts (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ username VARCHAR(50),
+ email VARCHAR(100),
+ created_date DATE
+);
+INSERT INTO user_accounts (username, email, created_date) VALUES
+('admin', 'admin@company.com', '2024-01-01'),
+('user1', 'user1@company.com', '2024-01-15'),
+('user2', 'user2@company.com', '2024-02-01');
+
+FLUSH PRIVILEGES;
+EOF
+(no output)
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo mysql -u root -e "SHOW DATABASES LIKE 'company_db';"
+Database (company_db)
+company_db
+
+============================================================
+Task 1.3: Create Backup Playbook
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ nano playbooks/mariadb-backup.yml
+(file saved)
+
+============================================================
+Task 1.4: Create Backup Configuration File
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ nano playbooks/backup-config.yml
+(file saved)
+
+============================================================
+Task 1.5: Run Backup Playbook (Verbose)
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ ansible-playbook -i inventory/hosts playbooks/mariadb-backup.yml -v
+Using /etc/ansible/ansible.cfg as config file
+
+PLAY [MariaDB Database Backup Automation] ******************************************
+
+TASK [Gathering Facts] ************************************************************
+ok: [localhost]
+
+TASK [Create backup directory] ****************************************************
+changed: [localhost] => {"path":"/opt/mariadb-backups","state":"directory"}
+
+TASK [Create daily backup subdirectory] *******************************************
+changed: [localhost] => {"path":"/opt/mariadb-backups/2026-02-27","state":"directory"}
+
+TASK [Install required packages] **************************************************
+ok: [localhost] => {"changed": false}
+
+TASK [Check MariaDB service status] ************************************************
+ok: [localhost]
+
+TASK [Fail if MariaDB is not running] **********************************************
+skipping: [localhost] => {"skip_reason": "Conditional result was False"}
+
+TASK [Create individual database backups] ******************************************
+changed: [localhost] => (item=company_db)
+changed: [localhost] => (item=inventory_db)
+changed: [localhost] => (item=users_db)
+
+TASK [Create full database backup (all databases)] *********************************
+changed: [localhost]
+
+TASK [Verify backup files exist and have content] **********************************
+ok: [localhost] => (item=company_db)
+ok: [localhost] => (item=inventory_db)
+ok: [localhost] => (item=users_db)
+
+TASK [Create backup log entry] ****************************************************
+changed: [localhost]
+
+TASK [Remove old backups (retention policy)] ***************************************
+ok: [localhost] => {"matched": 0, "files": []}
+
+TASK [Delete old backup directories] ***********************************************
+skipping: [localhost] => {"skip_reason": "Conditional result was False"}
+
+TASK [Display backup summary] ******************************************************
+ok: [localhost] => {
+  "msg": "Backup Summary:\n- Backup Location: /opt/mariadb-backups/2026-02-27\n- Databases Backed Up: company_db, inventory_db, users_db\n- Backup Timestamp: 20260227_162512\n- Full Backup: full_backup_20260227_162512.sql.gz\n"
+}
+
+PLAY RECAP ***********************************************************************
+localhost                  : ok=10   changed=5    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0
+
+============================================================
+Task 1.5: Verify Backup Directory and Files
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ ls -la /opt/mariadb-backups/
+total 16
+drwxr-xr-x  3 root root 4096 Feb 27 16:25 .
+drwxr-xr-x  3 root root 4096 Feb 27 16:24 ..
+drwxr-xr-x  2 root root 4096 Feb 27 16:25 2026-02-27
+-rw-r--r--  1 root root  141 Feb 27 16:25 backup.log
+
+toor@ip-172-31-10-193:~/mariadb-automation$ ls -la /opt/mariadb-backups/$(date +%Y-%m-%d)/
+total 28
+drwxr-xr-x 2 root root 4096 Feb 27 16:25 .
+drwxr-xr-x 3 root root 4096 Feb 27 16:25 ..
+-rw-r--r-- 1 root root  933 Feb 27 16:25 company_db_20260227_162512.sql.gz
+-rw-r--r-- 1 root root  884 Feb 27 16:25 inventory_db_20260227_162512.sql.gz
+-rw-r--r-- 1 root root  898 Feb 27 16:25 users_db_20260227_162512.sql.gz
+-rw-r--r-- 1 root root 2403 Feb 27 16:25 full_backup_20260227_162512.sql.gz
+
+============================================================
+Task 1.5: Backup Integrity Check
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ du -sh /opt/mariadb-backups/$(date +%Y-%m-%d)/*
+4.0K    /opt/mariadb-backups/2026-02-27/company_db_20260227_162512.sql.gz
+4.0K    /opt/mariadb-backups/2026-02-27/full_backup_20260227_162512.sql.gz
+4.0K    /opt/mariadb-backups/2026-02-27/inventory_db_20260227_162512.sql.gz
+4.0K    /opt/mariadb-backups/2026-02-27/users_db_20260227_162512.sql.gz
+
+toor@ip-172-31-10-193:~/mariadb-automation$ zcat /opt/mariadb-backups/$(date +%Y-%m-%d)/company_db_*.sql.gz | head -20
+-- MariaDB dump 10.19  Distrib 10.11.6-MariaDB, for Linux (x86_64)
+--
+-- Host: localhost    Database: company_db
+-- ------------------------------------------------------
+-- Server version       10.11.6-MariaDB-0ubuntu0.24.04.1
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+
+============================================================
+Task 2.1: Create Restore Playbook
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ nano playbooks/mariadb-restore.yml
+(file saved)
+
+============================================================
+Task 2.2: Create Selective Restore Playbook
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ nano playbooks/mariadb-selective-restore.yml
+(file saved)
+
+============================================================
+Task 2.3: Modify Data to Validate Restore
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo mysql -u root << 'EOF'
+USE company_db;
+DELETE FROM employees WHERE name = 'John Doe';
+INSERT INTO employees (name, department, salary) VALUES ('Test User', 'Testing', 50000.00);
+SELECT * FROM employees;
+EOF
+id	name	department	salary
+2	Jane Smith	HR	65000.00
+3	Mike Johnson	Finance	80000.00
+4	Test User	Testing	50000.00
+
+============================================================
+Task 2.3: Run Restore Playbook (First Run - Expected Failure)
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ ansible-playbook -i inventory/hosts playbooks/mariadb-restore.yml -e "force_restore=true" -v
+PLAY [MariaDB Database Restore Automation] ****************************************
+
+TASK [Gathering Facts] ************************************************************
+ok: [localhost]
+
+TASK [Check if backup directory exists] *******************************************
+ok: [localhost] => {"changed": false, "stat": {"exists": true}}
+
+TASK [List available backup files] ************************************************
+ok: [localhost] => {"changed": false, "matched": 4, "files": [{"path":"/opt/mariadb-backups/2026-02-27/company_db_20260227_162512.sql.gz"}, ...]}
+
+TASK [Display available backups] **************************************************
+ok: [localhost] => {
+  "msg": "Available backup files: ['company_db_20260227_162512.sql.gz', 'inventory_db_20260227_162512.sql.gz', 'users_db_20260227_162512.sql.gz', 'full_backup_20260227_162512.sql.gz']"
+}
+
+TASK [Check MariaDB service status] ************************************************
+ok: [localhost]
+
+TASK [Create restore log entry - Start] *******************************************
+changed: [localhost]
+
+TASK [Restore individual databases] ************************************************
+changed: [localhost] => (item={'path': '/opt/mariadb-backups/2026-02-27/company_db_20260227_162512.sql.gz'})
+changed: [localhost] => (item={'path': '/opt/mariadb-backups/2026-02-27/inventory_db_20260227_162512.sql.gz'})
+changed: [localhost] => (item={'path': '/opt/mariadb-backups/2026-02-27/users_db_20260227_162512.sql.gz'})
+skipping: [localhost] => (item={'path': '/opt/mariadb-backups/2026-02-27/full_backup_20260227_162512.sql.gz'})
+
+TASK [Verify database restoration] ************************************************
+fatal: [localhost]: FAILED! => {"msg": "The module community.mysql.mysql_query was not found in configured module paths."}
+
+PLAY RECAP ************************************************************************
+localhost                  : ok=7    changed=4    unreachable=0    failed=1    skipped=1
+
+============================================================
+Fix: Install Required Ansible Collection
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ ansible-galaxy collection install community.mysql
+Starting galaxy collection install process
+Process install dependency map
+Starting collection install process
+Installing 'community.mysql:3.9.0' to '/home/toor/.ansible/collections/ansible_collections/community/mysql'
+community.mysql:3.9.0 was installed successfully
+
+============================================================
+Task 2.3: Re-run Restore Playbook (Successful)
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ ansible-playbook -i inventory/hosts playbooks/mariadb-restore.yml -e "force_restore=true" -v
+PLAY [MariaDB Database Restore Automation] ****************************************
+
+TASK [Gathering Facts] ************************************************************
+ok: [localhost]
+
+TASK [Check if backup directory exists] *******************************************
+ok: [localhost]
+
+TASK [List available backup files] ************************************************
+ok: [localhost]
+
+TASK [Display available backups] **************************************************
+ok: [localhost] => {
+  "msg": "Available backup files: ['company_db_20260227_162512.sql.gz', 'inventory_db_20260227_162512.sql.gz', 'users_db_20260227_162512.sql.gz', 'full_backup_20260227_162512.sql.gz']"
+}
+
+TASK [Check MariaDB service status] ************************************************
+ok: [localhost]
+
+TASK [Create restore log entry - Start] *******************************************
+changed: [localhost]
+
+TASK [Restore individual databases] ************************************************
+changed: [localhost] => (item={'path': '/opt/mariadb-backups/2026-02-27/company_db_20260227_162512.sql.gz'})
+changed: [localhost] => (item={'path': '/opt/mariadb-backups/2026-02-27/inventory_db_20260227_162512.sql.gz'})
+changed: [localhost] => (item={'path': '/opt/mariadb-backups/2026-02-27/users_db_20260227_162512.sql.gz'})
+skipping: [localhost] => (item={'path': '/opt/mariadb-backups/2026-02-27/full_backup_20260227_162512.sql.gz'})
+
+TASK [Verify database restoration] ************************************************
+ok: [localhost] => {"changed": false}
+
+TASK [Create restore log entry - Complete] ****************************************
+changed: [localhost]
+
+TASK [Display restore summary] *****************************************************
+ok: [localhost] => {
+  "msg": "Restore Summary:\n- Restore Date: 2026-02-27\n- Backup Source: /opt/mariadb-backups/2026-02-27\n- Databases Available: 10\n- Restore Type: individual\n"
+}
+
+PLAY RECAP ************************************************************************
+localhost                  : ok=10   changed=6    unreachable=0    failed=0    skipped=1
+
+============================================================
+Task 2.3: Verify Restoration Restored Original Data
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo mysql -u root -e "USE company_db; SELECT * FROM employees;"
+id	name	department	salary
+1	John Doe	IT	75000.00
+2	Jane Smith	HR	65000.00
+3	Mike Johnson	Finance	80000.00
+
+============================================================
+Task 3.1: Comprehensive Backup/Restore Test Playbook
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ nano playbooks/test-backup-restore.yml
+(file saved)
+
+toor@ip-172-31-10-193:~/mariadb-automation$ ansible-playbook -i inventory/hosts playbooks/test-backup-restore.yml -v
+PLAY [Comprehensive Backup and Restore Testing] ***********************************
+
+TASK [Gathering Facts] ************************************************************
+ok: [localhost]
+
+TASK [Create test database with sample data] **************************************
+changed: [localhost]
+
+TASK [Create test table and insert data] ******************************************
+changed: [localhost]
+
+TASK [Get original data count] ****************************************************
+ok: [localhost]
+
+TASK [Display original data] ******************************************************
+ok: [localhost] => {
+  "msg": "Original record count: 3"
+}
+
+TASK [Run backup for test database] ************************************************
+changed: [localhost]
+
+TASK [Verify backup file was created] *********************************************
+ok: [localhost]
+
+TASK [Modify test data (simulate data changes)] ***********************************
+changed: [localhost]
+
+TASK [Get modified data count] ****************************************************
+ok: [localhost]
+
+TASK [Display modified data count] ************************************************
+ok: [localhost] => {
+  "msg": "Modified record count: 3"
+}
+
+TASK [Drop test database to simulate data loss] ***********************************
+changed: [localhost]
+
+TASK [Verify database was dropped] ************************************************
+ok: [localhost]
+
+TASK [Restore test database from backup] ******************************************
+changed: [localhost]
+
+TASK [Verify database was restored] ***********************************************
+ok: [localhost]
+
+TASK [Get restored data count] ****************************************************
+ok: [localhost]
+
+TASK [Verify data integrity] ******************************************************
+ok: [localhost]
+
+TASK [Display test results] *******************************************************
+ok: [localhost] => {
+  "msg": "Backup and Restore Test Results:\n- Original Count: 3\n- Modified Count: 3\n- Restored Count: 3\n- Data Integrity: PASSED\n- Backup File Size: 1049 bytes\n"
+}
+
+TASK [Clean up test backup file] **************************************************
+changed: [localhost]
+
+TASK [Test result summary] ********************************************************
+ok: [localhost] => {
+  "msg": "TEST SUMMARY:\n✓ Backup Creation: PASSED\n✓ Database Drop: PASSED\n✓ Database Restore: PASSED\n✓ Data Integrity: PASSED\n"
+}
+
+PLAY RECAP ************************************************************************
+localhost                  : ok=18   changed=7    unreachable=0    failed=0    skipped=0
+
+============================================================
+Task 3.2: Apply Scheduling Playbook (cron + scripts)
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ nano playbooks/schedule-backups.yml
+(file saved)
+
+toor@ip-172-31-10-193:~/mariadb-automation$ ansible-playbook -i inventory/hosts playbooks/schedule-backups.yml -v
+PLAY [Schedule Automated MariaDB Backups] *****************************************
+
+TASK [Gathering Facts] ************************************************************
+ok: [localhost]
+
+TASK [Create backup script] *******************************************************
+changed: [localhost]
+
+TASK [Schedule daily backup at 2 AM] **********************************************
+changed: [localhost]
+
+TASK [Schedule weekly full backup on Sunday at 1 AM] ******************************
+changed: [localhost]
+
+TASK [Create backup monitoring script] ********************************************
+changed: [localhost]
+
+TASK [Display scheduling information] *********************************************
+ok: [localhost] => {
+  "msg": "Backup Scheduling Configured:\n- Daily backups: 2:00 AM\n- Weekly full backups: Sunday 1:00 AM\n- Backup script: /usr/local/bin/mariadb-backup.sh\n- Status script: /usr/local/bin/backup-status.sh\n\nTo check backup status manually, run:\n/usr/local/bin/backup-status.sh\n"
+}
+
+PLAY RECAP ************************************************************************
+localhost                  : ok=6    changed=4    unreachable=0    failed=0
+
+============================================================
+Task 3.2: Manual Backup Script Execution
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo /usr/local/bin/mariadb-backup.sh
+(no terminal output - script logs to /opt/mariadb-backups/backup.log)
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo ls -lh /opt/mariadb-backups/$(date +%Y-%m-%d) | head
+total 20K
+-rw-r--r-- 1 root root 1.1K Feb 27 16:41 company_db_20260227_164116.sql.gz
+-rw-r--r-- 1 root root 1.0K Feb 27 16:41 inventory_db_20260227_164116.sql.gz
+-rw-r--r-- 1 root root 1.0K Feb 27 16:41 users_db_20260227_164116.sql.gz
+-rw-r--r-- 1 root root 2.7K Feb 27 16:41 full_backup_20260227_164116.sql.gz
+
+============================================================
+Task 3.2: Backup Status Script
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo /usr/local/bin/backup-status.sh
+=== MariaDB Backup Status Report ===
+Generated: Tue Feb 27 16:41:29 UTC 2026
+
+✓ Today's backup directory exists: /opt/mariadb-backups/2026-02-27
+Files in today's backup:
+total 20K
+-rw-r--r-- 1 root root 1.1K Feb 27 16:41 company_db_20260227_164116.sql.gz
+-rw-r--r-- 1 root root 1.0K Feb 27 16:41 inventory_db_20260227_164116.sql.gz
+-rw-r--r-- 1 root root 1.0K Feb 27 16:41 users_db_20260227_164116.sql.gz
+-rw-r--r-- 1 root root 2.7K Feb 27 16:41 full_backup_20260227_164116.sql.gz
+
+Recent backup log entries:
+2026-02-27 16:41:16 - Starting automated backup
+2026-02-27 16:41:16 - Backing up database: company_db
+2026-02-27 16:41:16 - Successfully backed up company_db
+2026-02-27 16:41:16 - Backing up database: inventory_db
+2026-02-27 16:41:16 - Successfully backed up inventory_db
+2026-02-27 16:41:16 - Backing up database: users_db
+2026-02-27 16:41:16 - Successfully backed up users_db
+2026-02-27 16:41:16 - Creating full backup
+2026-02-27 16:41:16 - Successfully created full backup
+2026-02-27 16:41:16 - Backup process completed successfully
+
+=== Disk Usage ===
+12K     /opt/mariadb-backups/2026-02-27
+
+============================================================
+Task 3.2: Verify Cron Jobs
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo crontab -l
+# Edit this file to introduce tasks to be run by cron.
+#
+# m h  dom mon dow   command
+0 2 * * * /usr/local/bin/mariadb-backup.sh
+0 1 * * 0 /usr/local/bin/mariadb-backup.sh
+
+============================================================
+Task 3.4: Backup Performance Test Script
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ nano scripts/backup-performance-test.sh
+(file saved)
+
+toor@ip-172-31-10-193:~/mariadb-automation$ chmod +x scripts/backup-performance-test.sh
+(no output)
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo ./scripts/backup-performance-test.sh
+=== MariaDB Backup Performance Test ===
+Starting performance test at Tue Feb 27 16:46:02 UTC 2026
+
+Test 1: Individual Database Backup Performance
+Backing up company_db... ./scripts/backup-performance-test.sh: line 18: bc: command not found
+Duration: s, Size: 4.0K
+Backing up inventory_db... ./scripts/backup-performance-test.sh: line 18: bc: command not found
+Duration: s, Size: 4.0K
+Backing up users_db... ./scripts/backup-performance-test.sh: line 18: bc: command not found
+Duration: s, Size: 4.0K
+
+Test 2: Full Database Backup Performance
+Creating full backup... ./scripts/backup-performance-test.sh: line 29: bc: command not found
+Duration: s, Size: 8.0K
+
+Test 3: Backup Integrity Verification
+Verifying company_db_perf_test.sql.gz... ✓ Valid
+Verifying inventory_db_perf_test.sql.gz... ✓ Valid
+Verifying users_db_perf_test.sql.gz... ✓ Valid
+Verifying full_perf_test.sql.gz... ✓ Valid
+
+Performance test completed at Tue Feb 27 16:46:03 UTC 2026
+
+============================================================
+Fix: Install Missing Dependency (bc)
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo apt install bc -y
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following NEW packages will be installed:
+  bc
+0 upgraded, 1 newly installed, 0 to remove and 0 not upgraded.
+Setting up bc (1.07.1-3build1) ...
+
+============================================================
+Task 3.4: Re-run Performance Test (Successful)
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo ./scripts/backup-performance-test.sh
+=== MariaDB Backup Performance Test ===
+Starting performance test at Tue Feb 27 16:47:22 UTC 2026
+
+Test 1: Individual Database Backup Performance
+Backing up company_db... Duration: 0.184312s, Size: 4.0K
+Backing up inventory_db... Duration: 0.173904s, Size: 4.0K
+Backing up users_db... Duration: 0.170885s, Size: 4.0K
+
+Test 2: Full Database Backup Performance
+Creating full backup... Duration: 0.298611s, Size: 8.0K
+
+Test 3: Backup Integrity Verification
+Verifying company_db_perf_test.sql.gz... ✓ Valid
+Verifying inventory_db_perf_test.sql.gz... ✓ Valid
+Verifying users_db_perf_test.sql.gz... ✓ Valid
+Verifying full_perf_test.sql.gz... ✓ Valid
+
+Performance test completed at Tue Feb 27 16:47:23 UTC 2026
+
+============================================================
+Task 4: Validate Retention Policy (Simulate Old Backup Dirs)
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo mkdir -p /opt/mariadb-backups/2026-02-10 /opt/mariadb-backups/2026-02-12
+(no output)
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo touch -d "15 days ago" /opt/mariadb-backups/2026-02-10 /opt/mariadb-backups/2026-02-12
+(no output)
+
+toor@ip-172-31-10-193:~/mariadb-automation$ ansible-playbook -i inventory/hosts playbooks/mariadb-backup.yml -v
+
+TASK [Remove old backups (retention policy)] ***************************************
+ok: [localhost] => {"matched": 2, "files": [{"path":"/opt/mariadb-backups/2026-02-10"}, {"path":"/opt/mariadb-backups/2026-02-12"}]}
+
+TASK [Delete old backup directories] ***********************************************
+changed: [localhost] => (item={'path': '/opt/mariadb-backups/2026-02-10'})
+changed: [localhost] => (item={'path': '/opt/mariadb-backups/2026-02-12'})
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo ls -1 /opt/mariadb-backups | head
+2026-02-27
+backup.log
+restore.log
+
+============================================================
+Task 5: Review Backup and Restore Logs
+============================================================
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo tail -n 15 /opt/mariadb-backups/backup.log
+2026-02-27 16:41:16 - Starting automated backup
+2026-02-27 16:41:16 - Backing up database: company_db
+2026-02-27 16:41:16 - Successfully backed up company_db
+2026-02-27 16:41:16 - Backing up database: inventory_db
+2026-02-27 16:41:16 - Successfully backed up inventory_db
+2026-02-27 16:41:16 - Backing up database: users_db
+2026-02-27 16:41:16 - Successfully backed up users_db
+2026-02-27 16:41:16 - Creating full backup
+2026-02-27 16:41:16 - Successfully created full backup
+2026-02-27 16:41:16 - Backup process completed successfully
+
+toor@ip-172-31-10-193:~/mariadb-automation$ sudo tail -n 10 /opt/mariadb-backups/restore.log
+2026-02-27T16:31:02Z - Starting restore operation from 2026-02-27
+2026-02-27T16:33:14Z - Starting restore operation from 2026-02-27
+2026-02-27T16:33:15Z - Restore operation completed successfully
+
+============================================================
+Lab Completed Successfully
+============================================================
+Files created in this lab:
+- inventory/hosts
+- playbooks/mariadb-backup.yml
+- playbooks/backup-config.yml
+- playbooks/mariadb-restore.yml
+- playbooks/mariadb-selective-restore.yml
+- playbooks/test-backup-restore.yml
+- playbooks/schedule-backups.yml
+- scripts/backup-performance-test.sh
