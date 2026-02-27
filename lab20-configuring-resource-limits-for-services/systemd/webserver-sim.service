@@ -1,0 +1,27 @@
+[Unit]
+Description=Web Server Simulation Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/testservice/webserver-sim.sh
+Restart=always
+RestartSec=5
+User=nobody
+Group=nobody
+
+# Resource Limits for Web Server
+CPUQuota=75%
+MemoryMax=200M
+TasksMax=20
+IOReadBandwidthMax=/dev/nvme0n1 10M
+IOWriteBandwidthMax=/dev/nvme0n1 5M
+
+# Enable accounting
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes
+IOAccounting=yes
+
+[Install]
+WantedBy=multi-user.target
