@@ -1,0 +1,40 @@
+---
+- name: Complete System Configuration
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update system packages
+      yum:
+        name: "*"
+        state: latest
+        update_cache: yes
+
+    - name: Install essential packages
+      yum:
+        name:
+          - vim
+          - wget
+          - curl
+          - htop
+          - git
+        state: present
+
+    - name: Configure timezone
+      timezone:
+        name: America/New_York
+
+    - name: Create log directory
+      file:
+        path: /var/log/ansible-managed
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Generate system information file
+      template:
+        src: templates/system-info.j2
+        dest: /var/log/ansible-managed/system-info.txt
+        owner: root
+        group: root
+        mode: '0644'
