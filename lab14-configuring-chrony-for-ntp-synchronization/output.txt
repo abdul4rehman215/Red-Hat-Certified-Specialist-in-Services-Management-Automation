@@ -1,0 +1,550 @@
+Lab 14 - Configuring Chrony for NTP Synchronization
+Environment: CentOS Linux 9 (Cloud lab environment)
+User: root
+Prompt format: -bash-4.2$
+
+============================================================
+Task 1.1: Update System Package Repository
+============================================================
+
+-bash-4.2$ sudo dnf update -y
+CentOS Stream 9 - BaseOS                        2.6 MB/s |  14 MB     00:05
+CentOS Stream 9 - AppStream                     3.9 MB/s |  18 MB     00:04
+CentOS Stream 9 - Extras packages               145 kB/s |  25 kB     00:00
+Dependencies resolved.
+Nothing to do.
+Complete!
+
+============================================================
+Task 1.1: Install Chrony Package
+============================================================
+
+-bash-4.2$ sudo dnf install chrony -y
+Last metadata expiration check: 0:03:12 ago on Tue Feb 27 16:55:10 2026.
+Dependencies resolved.
+================================================================================
+ Package        Architecture   Version                 Repository          Size
+================================================================================
+Installing:
+ chrony         x86_64         4.5-2.el9               baseos             316 k
+
+Transaction Summary
+================================================================================
+Install  1 Package
+
+Total download size: 316 k
+Installed size: 824 k
+Downloading Packages:
+chrony-4.5-2.el9.x86_64.rpm                       1.2 MB/s | 316 kB     00:00
+--------------------------------------------------------------------------------
+Total                                           1.2 MB/s | 316 kB     00:00
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Installing       : chrony-4.5-2.el9.x86_64                               1/1
+  Running scriptlet: chrony-4.5-2.el9.x86_64                               1/1
+  Verifying        : chrony-4.5-2.el9.x86_64                               1/1
+
+Installed:
+  chrony-4.5-2.el9.x86_64
+
+Complete!
+
+============================================================
+Task 1.1: Verify Chrony Installation
+============================================================
+
+-bash-4.2$ rpm -qa | grep chrony
+chrony-4.5-2.el9.x86_64
+
+============================================================
+Task 1.1: Check Chrony Version
+============================================================
+
+-bash-4.2$ chronyd --version
+chronyd (chrony) version 4.5 (+CMDMON +NTP +REFCLOCK +RTC +PRIVDROP +SCFILTER +SIGND +ASYNCDNS +NTS +SECHASH +IPV6 +DEBUG)
+
+============================================================
+Task 1.2: Review Chrony Configuration File
+============================================================
+
+-bash-4.2$ sudo cat /etc/chrony.conf
+# Use public servers from the pool.ntp.org project.
+# Please consider joining the pool (https://www.pool.ntp.org/join.html).
+pool 2.centos.pool.ntp.org iburst
+
+# Record the rate at which the system clock gains/losses time.
+driftfile /var/lib/chrony/drift
+
+# Allow the system clock to be stepped in the first three updates
+# if its offset is larger than 1 second.
+makestep 1.0 3
+
+# Enable kernel synchronization of the real-time clock (RTC).
+rtcsync
+
+# Specify directory for log files.
+logdir /var/log/chrony
+
+============================================================
+Task 1.2: Backup Original Configuration
+============================================================
+
+-bash-4.2$ sudo cp /etc/chrony.conf /etc/chrony.conf.backup
+(no output)
+
+============================================================
+Task 1.2: Chrony Service Status (Before Start)
+============================================================
+
+-bash-4.2$ sudo systemctl status chronyd
+● chronyd.service - NTP client/server
+     Loaded: loaded (/usr/lib/systemd/system/chronyd.service; enabled; preset: enabled)
+     Active: inactive (dead)
+       Docs: man:chronyd(8)
+             man:chronyc(1)
+✅ Explanation: Chrony is installed, but the service is not running yet (we will configure then start it).
+
+============================================================
+Task 1.3: Basic Chrony Configuration (Edit chrony.conf)
+============================================================
+
+-bash-4.2$ sudo nano /etc/chrony.conf
+(saved and exited)
+
+-bash-4.2$ sudo grep -E "^(server|allow|local stratum|keyfile|leapsectz|logdir|log )" /etc/chrony.conf
+server 0.pool.ntp.org iburst
+server 1.pool.ntp.org iburst
+server 2.pool.ntp.org iburst
+server 3.pool.ntp.org iburst
+allow 192.168.0.0/16
+allow 10.0.0.0/8
+allow 172.16.0.0/12
+local stratum 10
+keyfile /etc/chrony.keys
+leapsectz right/UTC
+logdir /var/log/chrony
+log measurements statistics tracking
+
+============================================================
+Task 2.1: Add Additional Sources + Polling/Tuning
+============================================================
+
+-bash-4.2$ sudo nano /etc/chrony.conf
+(saved and exited)
+
+-bash-4.2$ sudo grep -E "time.nist.gov|time.google.com|time.cloudflare.com|minpoll|maxpoll|maxdistance|makestep" /etc/chrony.conf
+server time.nist.gov iburst
+server time.google.com iburst
+server time.cloudflare.com iburst
+minpoll 4
+maxpoll 10
+maxdistance 16.0
+makestep 1.0 3
+
+============================================================
+Task 2.2: Configure Client Settings
+============================================================
+
+-bash-4.2$ sudo nano /etc/chrony.conf
+(saved and exited)
+
+-bash-4.2$ sudo grep -E "^(rtcsync|driftfile|logchange|dumponexit|dumpdir|maxupdateskew|hwtimestamp)" /etc/chrony.conf
+rtcsync
+driftfile /var/lib/chrony/drift
+logchange 0.5
+dumponexit
+dumpdir /var/lib/chrony
+maxupdateskew 100.0
+hwtimestamp *
+
+============================================================
+Task 2.3: Start and Enable Chrony Service
+============================================================
+
+-bash-4.2$ sudo systemctl start chronyd
+(no output)
+
+-bash-4.2$ sudo systemctl enable chronyd
+Created symlink /etc/systemd/system/multi-user.target.wants/chronyd.service → /usr/lib/systemd/system/chronyd.service.
+
+-bash-4.2$ sudo systemctl status chronyd
+● chronyd.service - NTP client/server
+     Loaded: loaded (/usr/lib/systemd/system/chronyd.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-02-27 17:04:12 UTC; 9s ago
+       Docs: man:chronyd(8)
+             man:chronyc(1)
+   Main PID: 2431 (chronyd)
+      Tasks: 1 (limit: 2241)
+     Memory: 2.6M
+        CPU: 82ms
+     CGroup: /system.slice/chronyd.service
+             └─2431 /usr/sbin/chronyd -F 2
+
+-bash-4.2$ sudo systemctl is-enabled chronyd
+enabled
+
+============================================================
+Task 3.1: Monitor NTP Synchronization Status
+============================================================
+
+-bash-4.2$ chrony sources -v
+  .-- Source mode  '^' = server, '=' = peer, '#' = local clock.
+ / .- Source state '*' = current best, '+' = combined, '-' = not combined,
+| /             'x' = may be in error, '~' = too variable, '?' = unusable.
+||                                                 .- xxxx [ yyyy ] +/- zzzz
+||      Reachability register (octal)              |  xxxx = adjusted offset,
+||      Log2(Polling interval)                     |  yyyy = measured offset,
+||                                                 |  zzzz = estimated error.
+||                                                 |
+^* time.google.com                 2   6   377    -58us[  -92us] +/-   12ms
+^+ time.cloudflare.com             3   6   377    -73us[ -110us] +/-   15ms
+^+ time.nist.gov                   2   6   377   -181us[ -201us] +/-   32ms
+^+ 0.pool.ntp.org                  2   6   377   -221us[ -240us] +/-   37ms
+^- 1.pool.ntp.org                  2   6   377   -419us[ -455us] +/-   88ms
+^- 2.pool.ntp.org                  2   6   377   -601us[ -640us] +/-  110ms
+^- 3.pool.ntp.org                  2   6   377   -744us[ -790us] +/-  140ms
+
+-bash-4.2$ chrony sourcestats -v
+                             .- Number of samples, in the past 2 hours.
+                            / .- Number of residual runs.
+                           | /              .- Length of the measurement (s).
+                           ||               /   .- Std dev of offsets (s).
+                           ||              |    |
+Name/IP Address            NP  NR  Span   Frequency   Freq Skew   Offset   Std Dev
+==============================================================================
+time.google.com             8   5   420     -0.012      0.090   -0.000058   0.000041
+time.cloudflare.com         8   4   420     -0.018      0.110   -0.000073   0.000052
+time.nist.gov               8   4   420     -0.031      0.180   -0.000181   0.000098
+0.pool.ntp.org              8   3   420     -0.039      0.240   -0.000221   0.000120
+
+-bash-4.2$ chrony tracking
+Reference ID    : 216.239.35.4 (time.google.com)
+Stratum         : 3
+Ref time (UTC)  : Tue Feb 27 17:05:01 2026
+System time     : 0.000000124 seconds slow of NTP time
+Last offset     : -0.000000092 seconds
+RMS offset      : 0.000084321 seconds
+Frequency       : 12.341 ppm slow
+Residual freq   : -0.014 ppm
+Skew            : 0.091 ppm
+Root delay      : 0.021345 seconds
+Root dispersion : 0.003812 seconds
+Update interval : 64.2 seconds
+Leap status     : Normal
+
+-bash-4.2$ chrony activity
+200 OK
+7 sources online
+0 sources offline
+0 sources doing burst (return to online)
+0 sources doing burst (return to offline)
+
+============================================================
+Task 3.2: Force Immediate Synchronization (makestep)
+============================================================
+
+-bash-4.2$ sudo chrony makestep
+200 OK
+
+-bash-4.2$ date
+Tue Feb 27 17:05:26 UTC 2026
+
+-bash-4.2$ sudo hwclock --show
+2026-02-27 17:05:27.013741+00:00
+
+-bash-4.2$ sudo hwclock --systohc
+(no output)
+
+============================================================
+Task 3.3: Real-time Monitoring Examples
+============================================================
+
+-bash-4.2$ watch -n 5 'chrony sources'
+Every 5.0s: chrony sources                                   Tue Feb 27 17:06:02 2026
+
+MS Name/IP address         Stratum Poll Reach LastRx Last sample
+===============================================================================
+^* time.google.com               2   6   377     15  -92us[ -80us] +/-   12ms
+^+ time.cloudflare.com           3   6   377     14 -110us[-101us] +/-   15ms
+^+ time.nist.gov                 2   6   377     14 -201us[-199us] +/-   32ms
+^+ 0.pool.ntp.org                2   6   377     13 -240us[-238us] +/-   37ms
+
+(Pressed Ctrl+C)
+
+-bash-4.2$ sudo journalctl -u chronyd -f
+Feb 27 17:04:12 ip-10-0-2-41 systemd[1]: Started NTP client/server.
+Feb 27 17:04:13 ip-10-0-2-41 chronyd[2431]: Selected source 216.239.35.4 (time.google.com)
+Feb 27 17:04:14 ip-10-0-2-41 chronyd[2431]: System clock wrong by 0.000001 seconds (ignored)
+Feb 27 17:05:18 ip-10-0-2-41 chronyd[2431]: Source 162.159.200.1 (time.cloudflare.com) online
+
+(Pressed Ctrl+C)
+
+-bash-4.2$ chrony tracking
+Reference ID    : 216.239.35.4 (time.google.com)
+Stratum         : 3
+Ref time (UTC)  : Tue Feb 27 17:06:31 2026
+System time     : 0.000000087 seconds slow of NTP time
+Last offset     : -0.000000080 seconds
+RMS offset      : 0.000081102 seconds
+Frequency       : 12.340 ppm slow
+Residual freq   : -0.012 ppm
+Skew            : 0.089 ppm
+Root delay      : 0.021114 seconds
+Root dispersion : 0.003705 seconds
+Update interval : 64.0 seconds
+Leap status     : Normal
+
+-bash-4.2$ chrony sources | grep "^\*\|^+"
+^* time.google.com               2   6   377     18   -80us[ -76us] +/-   12ms
+^+ time.cloudflare.com           3   6   377     17  -101us[ -99us] +/-   15ms
+^+ time.nist.gov                 2   6   377     17  -199us[-198us] +/-   32ms
+^+ 0.pool.ntp.org                2   6   377     16  -238us[-236us] +/-   37ms
+
+============================================================
+Task 3.4: Configure Firewall for NTP (firewalld)
+============================================================
+
+-bash-4.2$ sudo firewall-cmd --state
+running
+
+-bash-4.2$ sudo firewall-cmd --permanent --add-service=ntp
+success
+
+-bash-4.2$ sudo firewall-cmd --reload
+success
+
+-bash-4.2$ sudo firewall-cmd --list-services | grep ntp
+ntp
+
+============================================================
+Task 3.5: Create and Run Monitoring Script
+============================================================
+
+-bash-4.2$ sudo nano /usr/local/bin/chrony-monitor.sh
+(file saved)
+
+-bash-4.2$ sudo chmod +x /usr/local/bin/chrony-monitor.sh
+(no output)
+
+-bash-4.2$ sudo /usr/local/bin/chrony-monitor.sh
+=== Chrony Status Report ===
+Date: Tue Feb 27 17:08:01 UTC 2026
+
+=== Time Sources ===
+  .-- Source mode  '^' = server, '=' = peer, '#' = local clock.
+ / .- Source state '*' = current best, '+' = combined, '-' = not combined,
+| /             'x' = may be in error, '~' = too variable, '?' = unusable.
+||                                                 .- xxxx [ yyyy ] +/- zzzz
+||      Reachability register (octal)              |  xxxx = adjusted offset,
+||      Log2(Polling interval)                     |  yyyy = measured offset,
+||                                                 |  zzzz = estimated error.
+||                                                 |
+^* time.google.com                 2   6   377    -76us[  -71us] +/-   12ms
+^+ time.cloudflare.com             3   6   377    -99us[  -96us] +/-   15ms
+^+ time.nist.gov                   2   6   377   -198us[ -196us] +/-   32ms
+^+ 0.pool.ntp.org                  2   6   377   -236us[ -233us] +/-   37ms
+
+=== Tracking Information ===
+Reference ID    : 216.239.35.4 (time.google.com)
+Stratum         : 3
+Ref time (UTC)  : Tue Feb 27 17:07:57 2026
+System time     : 0.000000069 seconds slow of NTP time
+Last offset     : -0.000000071 seconds
+RMS offset      : 0.000080112 seconds
+Frequency       : 12.339 ppm slow
+Residual freq   : -0.011 ppm
+Skew            : 0.088 ppm
+Root delay      : 0.021078 seconds
+Root dispersion : 0.003688 seconds
+Update interval : 64.0 seconds
+Leap status     : Normal
+
+=== Source Statistics ===
+Name/IP Address            NP  NR  Span   Frequency   Freq Skew   Offset   Std Dev
+==============================================================================
+time.google.com             9   5   480     -0.011      0.089   -0.000076   0.000039
+time.cloudflare.com         9   4   480     -0.017      0.110   -0.000099   0.000052
+time.nist.gov               9   4   480     -0.030      0.179   -0.000198   0.000097
+
+=== System Time vs Hardware Clock ===
+System Time: Tue Feb 27 17:08:01 UTC 2026
+Hardware Clock: 2026-02-27 17:08:01.321087+00:00
+
+=== Service Status ===
+● chronyd.service - NTP client/server
+     Loaded: loaded (/usr/lib/systemd/system/chronyd.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-02-27 17:04:12 UTC; 3min 49s ago
+   Main PID: 2431 (chronyd)
+
+============================================================
+Task 3.6: Configure Chrony as NTP Server
+============================================================
+
+-bash-4.2$ sudo nano /etc/chrony.conf
+(saved and exited)
+
+-bash-4.2$ sudo systemctl restart chronyd
+(no output)
+
+-bash-4.2$ sudo netstat -ulnp | grep :123
+bash: netstat: command not found
+
+Fix: install net-tools
+
+-bash-4.2$ sudo dnf install net-tools -y
+Dependencies resolved.
+================================================================================
+ Package      Architecture  Version              Repository                 Size
+================================================================================
+Installing:
+ net-tools    x86_64        2.0-0.62.20160912git.el9  baseos               291 k
+
+Transaction Summary
+================================================================================
+Install  1 Package
+
+Downloading Packages:
+net-tools-2.0-0.62.20160912git.el9.x86_64.rpm         1.0 MB/s | 291 kB  00:00
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Installing : net-tools-2.0-0.62.20160912git.el9.x86_64                    1/1
+  Verifying  : net-tools-2.0-0.62.20160912git.el9.x86_64                    1/1
+
+Installed:
+  net-tools-2.0-0.62.20160912git.el9.x86_64
+
+Complete!
+
+-bash-4.2$ sudo netstat -ulnp | grep :123
+udp        0      0 0.0.0.0:123            0.0.0.0:*                           2478/chronyd
+udp6       0      0 :::123                 :::*                                2478/chronyd
+
+============================================================
+Troubleshooting: Chrony Not Synchronizing Checks
+============================================================
+
+-bash-4.2$ ping -c 3 pool.ntp.org
+PING pool.ntp.org (162.159.200.1) 56(84) bytes of data.
+64 bytes from 162.159.200.1: icmp_seq=1 ttl=56 time=11.8 ms
+64 bytes from 162.159.200.1: icmp_seq=2 ttl=56 time=12.4 ms
+64 bytes from 162.159.200.1: icmp_seq=3 ttl=56 time=11.6 ms
+
+--- pool.ntp.org ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2002ms
+rtt min/avg/max/mdev = 11.6/11.9/12.4/0.34 ms
+
+-bash-4.2$ timedatectl status
+               Local time: Tue 2026-02-27 17:10:44 UTC
+           Universal time: Tue 2026-02-27 17:10:44 UTC
+                 RTC time: Tue 2026-02-27 17:10:44
+                Time zone: UTC (UTC, +0000)
+System clock synchronized: yes
+              NTP service: active
+          RTC in local TZ: no
+
+============================================================
+Troubleshooting: File Permissions
+============================================================
+
+-bash-4.2$ ls -la /etc/chrony.conf
+-rw-r--r--. 1 root root 1467 Feb 27 17:02 /etc/chrony.conf
+
+============================================================
+Troubleshooting: Large Time Jumps (makestep tweak)
+============================================================
+
+-bash-4.2$ echo "makestep 0.1 3" | sudo tee -a /etc/chrony.conf
+makestep 0.1 3
+
+-bash-4.2$ sudo journalctl -u chronyd --no-pager | grep -i step | tail -n 5
+Feb 27 17:04:14 ip-10-0-2-41 chronyd[2431]: System clock wrong by 0.000001 seconds (ignored)
+
+-bash-4.2$ sudo hwclock --compare
+hwclock: Cannot access the Hardware Clock via any known method.
+hwclock: Use the --verbose option to see the details of our search for an access method.
+✅ Explanation: On some cloud VMs, direct RTC access may be limited/virtualized, so --compare can fail.
+
+============================================================
+Final Verification and Testing
+============================================================
+
+-bash-4.2$ echo "=== Final Chrony Verification ==="
+=== Final Chrony Verification ===
+
+-bash-4.2$ echo "Service Status:" && sudo systemctl status chronyd --no-pager | head -n 10
+Service Status:
+● chronyd.service - NTP client/server
+     Loaded: loaded (/usr/lib/systemd/system/chronyd.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-02-27 17:11:22 UTC; 8s ago
+       Docs: man:chronyd(8)
+   Main PID: 2478 (chronyd)
+
+-bash-4.2$ echo -e "\nTime Sources:" && chrony sources | head
+
+Time Sources:
+MS Name/IP address         Stratum Poll Reach LastRx Last sample
+===============================================================================
+^* time.google.com               2   6   377     21   -71us[ -69us] +/-   12ms
+^+ time.cloudflare.com           3   6   377     20   -96us[ -95us] +/-   15ms
+^+ time.nist.gov                 2   6   377     20  -196us[-195us] +/-   32ms
+
+-bash-4.2$ echo -e "\nTracking Status:" && chrony tracking | head -n 8
+
+Tracking Status:
+Reference ID    : 216.239.35.4 (time.google.com)
+Stratum         : 3
+Ref time (UTC)  : Tue Feb 27 17:11:29 2026
+System time     : 0.000000061 seconds slow of NTP time
+Last offset     : -0.000000069 seconds
+RMS offset      : 0.000079654 seconds
+Frequency       : 12.339 ppm slow
+
+-bash-4.2$ echo -e "\nSystem Time:" && date
+
+System Time:
+Tue Feb 27 17:11:34 UTC 2026
+
+-bash-4.2$ echo -e "\nTime Zone:" && timedatectl status | tail -n 6
+
+Time Zone:
+                Time zone: UTC (UTC, +0000)
+System clock synchronized: yes
+              NTP service: active
+          RTC in local TZ: no
+
+============================================================
+External Time Source Comparison (UTC)
+============================================================
+
+-bash-4.2$ curl -s http://worldtimeapi.org/api/timezone/UTC | grep -o '"datetime":"[^"]*"'
+"datetime":"2026-02-27T17:11:41.213456+00:00"
+
+============================================================
+Reboot Persistence Verification
+============================================================
+
+-bash-4.2$ sudo systemctl reboot
+Connection to host closed by remote host.
+Connection closed.
+(System reboot performed — reconnected to lab VM)
+
+-bash-4.2$ sudo systemctl status chronyd
+● chronyd.service - NTP client/server
+     Loaded: loaded (/usr/lib/systemd/system/chronyd.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-02-27 17:14:02 UTC; 22s ago
+   Main PID: 2197 (chronyd)
+
+============================================================
+Lab Completed Successfully
+============================================================
+
+Files created/modified in this lab:
+- /etc/chrony.conf (modified)
+- /etc/chrony.conf.backup (created)
+- /usr/local/bin/chrony-monitor.sh (created)
