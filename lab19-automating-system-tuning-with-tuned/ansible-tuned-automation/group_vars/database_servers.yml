@@ -1,0 +1,10 @@
+---
+tuned_profile: database-optimized
+server_type: database
+monitoring_enabled: true
+
+# Database specific tuning parameters
+db_tuning:
+  shared_buffers: "256MB"
+  effective_cache_size: "1GB"
+  maintenance_work_mem: "64MB"
