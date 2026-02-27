@@ -1,0 +1,31 @@
+---
+- name: Rollback to Default tuned Profile
+  hosts: all
+  become: yes
+
+  vars:
+    default_profile: balanced
+
+  tasks:
+    - name: Get current active profile
+      command: tuned-adm active
+      register: current_profile
+      changed_when: false
+
+    - name: Apply default profile
+      command: "tuned-adm profile {{ default_profile }}"
+      register: rollback_result
+      when: default_profile not in current_profile.stdout
+
+    - name: Verify rollback
+      command: tuned-adm active
+      register: new_profile
+      changed_when: false
+
+    - name: Display rollback status
+      debug:
+        msg:
+          - "Previous profile: {{ current_profile.stdout }}"
+          - "Current profile: {{ new_profile.stdout }}"
+          - "Rollback completed successfully"
+      when: rollback_result is changed
