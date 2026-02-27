@@ -1,0 +1,6 @@
+[database_servers]
+localhost ansible_connection=local
+
+[database_servers:vars]
+ansible_user=root
+ansible_become=yes
