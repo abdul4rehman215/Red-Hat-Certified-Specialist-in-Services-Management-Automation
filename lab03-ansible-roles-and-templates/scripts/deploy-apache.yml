@@ -1,0 +1,28 @@
+---
+- name: Deploy Apache HTTP Server using Custom Role
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    apache_admin_email: "webmaster@mycompany.com"
+    apache_server_name: "{{ inventory_hostname }}.mycompany.com"
+
+  roles:
+    - apache-role
+
+  post_tasks:
+    - name: Verify Apache is running
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ apache_port }}"
+        method: GET
+        status_code: 200
+      delegate_to: localhost
+      become: no
+
+    - name: Display access information
+      debug:
+        msg:
+          - "Apache successfully deployed on {{ inventory_hostname }}"
+          - "Access URL: http://{{ ansible_default_ipv4.address }}:{{ apache_port }}"
+          - "Server Name: {{ apache_server_name }}"
