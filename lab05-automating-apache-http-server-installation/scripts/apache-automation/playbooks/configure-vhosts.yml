@@ -1,0 +1,126 @@
+---
+- name: Configure Apache Virtual Hosts
+  hosts: webservers
+  become: yes
+  vars_files:
+    - ../vars/vhosts.yml
+  vars:
+    apache_service_name: httpd
+    apache_config_dir: /etc/httpd
+    apache_log_dir: /var/log/httpd
+
+  tasks:
+    - name: Create document root directories
+      file:
+        path: "{{ item.document_root }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+      loop: "{{ virtual_hosts }}"
+      tags: document_roots
+
+    - name: Create SSL certificate directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - /etc/ssl/certs
+        - /etc/ssl/private
+      tags: ssl_dirs
+
+    - name: Generate self-signed SSL certificates
+      block:
+        - name: Generate private keys
+          openssl_privatekey:
+            path: "{{ item.ssl_key_path }}"
+            size: 2048
+            owner: root
+            group: root
+            mode: '0600'
+          loop: "{{ virtual_hosts }}"
+          when: item.ssl_enabled is defined and item.ssl_enabled
+          tags: ssl_keys
+
+        - name: Generate certificate signing requests
+          openssl_csr:
+            path: "/tmp/{{ item.server_name }}.csr"
+            privatekey_path: "{{ item.ssl_key_path }}"
+            common_name: "{{ item.server_name }}"
+            subject_alt_name:
+              - "DNS:{{ item.server_name }}"
+              - "DNS:{{ item.server_alias | default('') }}"
+          loop: "{{ virtual_hosts }}"
+          when: item.ssl_enabled is defined and item.ssl_enabled
+          tags: ssl_csr
+
+        - name: Generate self-signed certificates
+          openssl_certificate:
+            path: "{{ item.ssl_cert_path }}"
+            privatekey_path: "{{ item.ssl_key_path }}"
+            csr_path: "/tmp/{{ item.server_name }}.csr"
+            provider: selfsigned
+            owner: root
+            group: root
+            mode: '0644'
+          loop: "{{ virtual_hosts }}"
+          when: item.ssl_enabled is defined and item.ssl_enabled
+          tags: ssl_certs
+      tags: ssl_generation
+
+    - name: Create virtual host configuration files
+      template:
+        src: ../templates/vhost.conf.j2
+        dest: "{{ apache_config_dir }}/conf.d/{{ item.server_name }}.conf"
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+      loop: "{{ virtual_hosts }}"
+      notify: restart apache
+      tags: vhost_config
+
+    - name: Create sample content for each virtual host
+      copy:
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>{{ item.server_name }} - Virtual Host</title>
+          <style>
+          body { font-family: Arial, sans-serif; margin: 40px; }
+          .header { background-color: #f4f4f4; padding: 20px; border-radius: 5px; }
+          .content { margin-top: 20px; }
+          </style>
+          </head>
+          <body>
+          <div class="header">
+          <h1>Welcome to {{ item.server_name }}</h1>
+          <p>Virtual Host Configuration Successful</p>
+          </div>
+          <div class="content">
+          <h2>Server Information</h2>
+          <ul>
+          <li><strong>Server Name:</strong> {{ item.server_name }}</li>
+          <li><strong>Document Root:</strong> {{ item.document_root }}</li>
+          <li><strong>SSL Enabled:</strong> {{ item.ssl_enabled | default('false') }}</li>
+          <li><strong>Server:</strong> {{ inventory_hostname }}</li>
+          </ul>
+          </div>
+          </body>
+          </html>
+        dest: "{{ item.document_root }}/index.html"
+        owner: apache
+        group: apache
+        mode: '0644'
+      loop: "{{ virtual_hosts }}"
+      tags: sample_content
+
+  handlers:
+    - name: restart apache
+      systemd:
+        name: "{{ apache_service_name }}"
+        state: restarted
