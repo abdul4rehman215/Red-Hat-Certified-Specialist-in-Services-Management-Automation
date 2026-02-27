@@ -1,0 +1,70 @@
+---
+- name: Manage User Accounts
+  hosts: all
+  become: yes
+  vars:
+    users_to_create:
+      - username: developer1
+        full_name: "John Developer"
+        groups: ["wheel", "developers"]
+        shell: /bin/bash
+      - username: developer2
+        full_name: "Jane Developer"
+        groups: ["developers"]
+        shell: /bin/bash
+      - username: operator1
+        full_name: "System Operator"
+        groups: ["wheel", "operators"]
+        shell: /bin/bash
+
+    user_dirs:
+      - projects
+      - scripts
+      - logs
+
+  tasks:
+    - name: Create user groups
+      group:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - developers
+        - operators
+
+    - name: Create user accounts
+      user:
+        name: "{{ item.username }}"
+        comment: "{{ item.full_name }}"
+        groups: "{{ item.groups }}"
+        shell: "{{ item.shell }}"
+        create_home: yes
+        state: present
+      loop: "{{ users_to_create }}"
+
+    - name: Set up SSH directory for users
+      file:
+        path: "/home/{{ item.username }}/.ssh"
+        state: directory
+        owner: "{{ item.username }}"
+        group: "{{ item.username }}"
+        mode: '0700'
+      loop: "{{ users_to_create }}"
+
+    - name: Generate SSH key pairs for users
+      openssh_keypair:
+        path: "/home/{{ item.username }}/.ssh/id_rsa"
+        owner: "{{ item.username }}"
+        group: "{{ item.username }}"
+        mode: '0600'
+      loop: "{{ users_to_create }}"
+
+    - name: Create user-specific directories
+      file:
+        path: "/home/{{ item.0.username }}/{{ item.1 }}"
+        state: directory
+        owner: "{{ item.0.username }}"
+        group: "{{ item.0.username }}"
+        mode: '0755'
+      with_nested:
+        - "{{ users_to_create }}"
+        - "{{ user_dirs }}"
