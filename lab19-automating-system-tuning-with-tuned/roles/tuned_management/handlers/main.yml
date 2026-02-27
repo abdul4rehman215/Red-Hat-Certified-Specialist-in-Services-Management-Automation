@@ -1,0 +1,6 @@
+---
+- name: restart tuned
+  systemd:
+    name: tuned
+    state: restarted
+  become: yes
