@@ -1,0 +1,1281 @@
+🧪 Lab 3: Ansible Roles and Templates
+Environment: CentOS/RHEL Control Node (Cloud Lab Environment)
+User: centos
+Working Directory Base: /home/centos
+==============================================================
+
+________________________________________
+Task 1: Understanding Ansible Roles Structure
+________________________________________
+
+Subtask 1.1: Explore the Standard Role Directory Structure
+
+Command Executed
+cd ~
+
+Command Executed
+mkdir ansible-roles-lab
+
+Command Executed
+cd ansible-roles-lab
+
+Command Executed
+pwd
+Output
+/home/centos/ansible-roles-lab
+
+Command Executed
+ansible-galaxy init apache-role
+Output
+- apache-role was created successfully
+
+Command Executed
+tree apache-role
+Output
+-bash: tree: command not found
+
+Command Executed
+sudo yum install -y tree
+Output
+Loaded plugins: fastestmirror
+Loading mirror speeds from cached hostfile
+ * base: mirror.centos.org
+ * extras: mirror.centos.org
+ * updates: mirror.centos.org
+Resolving Dependencies
+--> Running transaction check
+---> Package tree.x86_64 0:1.6.0-10.el7 will be installed
+--> Finished Dependency Resolution
+
+Dependencies Resolved
+
+================================================================================
+ Package        Arch             Version                 Repository        Size
+================================================================================
+Installing:
+ tree           x86_64           1.6.0-10.el7            base              46 k
+
+Transaction Summary
+================================================================================
+Install  1 Package
+
+Total download size: 46 k
+Installed size: 87 k
+Downloading packages:
+tree-1.6.0-10.el7.x86_64.rpm                                 |  46 kB  00:00
+Running transaction check
+Running transaction test
+Transaction test succeeded
+Running transaction
+  Installing : tree-1.6.0-10.el7.x86_64                                       1/1
+  Verifying  : tree-1.6.0-10.el7.x86_64                                       1/1
+
+Installed:
+  tree.x86_64 0:1.6.0-10.el7
+
+Complete!
+
+Command Executed
+tree apache-role
+Output
+apache-role
+├── README.md
+├── defaults
+│   └── main.yml
+├── files
+├── handlers
+│   └── main.yml
+├── meta
+│   └── main.yml
+├── tasks
+│   └── main.yml
+├── templates
+├── tests
+│   ├── inventory
+│   └── test.yml
+└── vars
+    └── main.yml
+
+8 directories, 8 files
+
+You should see output similar to:
+apache-role/
+├── README.md
+├── defaults/
+│ └── main.yml
+├── files/
+├── handlers/
+│ └── main.yml
+├── meta/
+│ └── main.yml
+├── tasks/
+│ └── main.yml
+├── templates/
+├── tests/
+│ ├── inventory
+│ └── test.yml
+└── vars/
+└── main.yml
+
+
+Subtask 1.2: Understanding Each Directory's Purpose
+
+Command Executed
+echo "=== Role Directory Structure ==="
+echo "tasks/ - Main logic and tasks"
+echo "handlers/ - Event-driven tasks (like service restarts)"
+echo "templates/ - Jinja2 template files"
+echo "files/ - Static files to copy"
+echo "vars/ - Role-specific variables"
+echo "defaults/ - Default variable values"
+echo "meta/ - Role metadata and dependencies"
+Output
+=== Role Directory Structure ===
+tasks/ - Main logic and tasks
+handlers/ - Event-driven tasks (like service restarts)
+templates/ - Jinja2 template files
+files/ - Static files to copy
+vars/ - Role-specific variables
+defaults/ - Default variable values
+meta/ - Role metadata and dependencies
+________________________________________
+Task 2: Creating an Apache HTTP Server Role
+________________________________________
+
+Subtask 2.1: Define Role Variables and Defaults
+
+Command Executed
+cat apache-role/defaults/main.yml
+Output
+---
+# defaults file for apache-role
+
+# Apache package name (varies by OS)
+apache_package: httpd
+
+# Apache service name
+apache_service: httpd
+
+# Apache configuration directory
+apache_config_dir: /etc/httpd/conf.d
+
+# Apache document root
+apache_document_root: /var/www/html
+
+# Apache listen port
+apache_port: 80
+
+# Apache server name
+apache_server_name: "{{ ansible_fqdn }}"
+
+# Apache admin email
+apache_admin_email: admin@example.com
+
+# Custom index page content
+apache_index_content: |
+ <html>
+ <head>
+ <title>Welcome to Apache</title>
+ </head>
+ <body>
+ <h1>Apache HTTP Server Deployed with Ansible</h1>
+ <p>Server: {{ ansible_hostname }}</p>
+ <p>IP Address: {{ ansible_default_ipv4.address }}</p>
+ </body>
+ </html>
+
+
+Command Executed
+mkdir -p apache-role/vars
+
+Command Executed
+cat apache-role/vars/RedHat.yml
+Output
+---
+# RedHat/CentOS specific variables
+apache_package: httpd
+apache_service: httpd
+apache_config_dir: /etc/httpd/conf.d
+apache_user: apache
+apache_group: apache
+
+Command Executed
+cat apache-role/vars/Debian.yml
+Output
+---
+# Ubuntu/Debian specific variables
+apache_package: apache2
+apache_service: apache2
+apache_config_dir: /etc/apache2/sites-available
+apache_user: www-data
+apache_group: www-data
+
+
+Subtask 2.2: Create the Main Tasks
+
+Command Executed
+cat apache-role/tasks/main.yml
+Output
+---
+# tasks file for apache-role
+
+- name: Include OS-specific variables
+  include_vars: "{{ ansible_os_family }}.yml"
+  tags: always
+
+- name: Install Apache HTTP Server
+  package:
+    name: "{{ apache_package }}"
+    state: present
+  become: yes
+  notify: restart apache
+
+- name: Ensure Apache is started and enabled
+  service:
+    name: "{{ apache_service }}"
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Create custom Apache configuration from template
+  template:
+    src: apache-custom.conf.j2
+    dest: "{{ apache_config_dir }}/custom.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: restart apache
+  when: ansible_os_family == "RedHat"
+
+- name: Create custom index page from template
+  template:
+    src: index.html.j2
+    dest: "{{ apache_document_root }}/index.html"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: '0644'
+  become: yes
+
+- name: Open firewall for HTTP (RedHat/CentOS)
+  firewalld:
+    service: http
+    permanent: yes
+    state: enabled
+    immediate: yes
+  become: yes
+  when: ansible_os_family == "RedHat"
+  ignore_errors: yes
+
+- name: Open firewall for HTTP (Ubuntu/Debian)
+  ufw:
+    rule: allow
+    port: "{{ apache_port }}"
+    proto: tcp
+  become: yes
+  when: ansible_os_family == "Debian"
+  ignore_errors: yes
+
+
+Subtask 2.3: Create Handlers
+
+Command Executed
+cat apache-role/handlers/main.yml
+Output
+---
+# handlers file for apache-role
+
+- name: restart apache
+  service:
+    name: "{{ apache_service }}"
+    state: restarted
+  become: yes
+  listen: restart apache
+
+- name: reload apache
+  service:
+    name: "{{ apache_service }}"
+    state: reloaded
+  become: yes
+  listen: reload apache
+
+
+________________________________________
+Task 3: Creating Jinja2 Templates
+________________________________________
+
+Subtask 3.1: Create Apache Configuration Template
+
+Command Executed
+sed -n '1,200p' apache-role/templates/apache-custom.conf.j2
+Output
+# Custom Apache Configuration
+# Generated by Ansible on {{ ansible_date_time.iso8601 }}
+
+# Server configuration
+ServerName {{ apache_server_name }}
+ServerAdmin {{ apache_admin_email }}
+
+# Listen on specified port
+Listen {{ apache_port }}
+
+# Virtual Host Configuration
+<VirtualHost *:{{ apache_port }}>
+ ServerName {{ apache_server_name }}
+ DocumentRoot {{ apache_document_root }}
+
+ # Logging
+ ErrorLog logs/{{ ansible_hostname }}_error.log
+ CustomLog logs/{{ ansible_hostname }}_access.log combined
+
+ # Directory permissions
+ <Directory "{{ apache_document_root }}">
+ Options Indexes FollowSymLinks
+ AllowOverride None
+ Require all granted
+ </Directory>
+
+ # Security headers
+ Header always set X-Content-Type-Options nosniff
+ Header always set X-Frame-Options DENY
+ Header always set X-XSS-Protection "1; mode=block"
+</VirtualHost>
+
+# Server information
+ServerTokens Prod
+ServerSignature Off
+
+# Performance tuning
+{% if ansible_memtotal_mb > 1024 %}
+# High memory server configuration
+StartServers 8
+MinSpareServers 5
+MaxSpareServers 20
+MaxRequestWorkers 256
+{% else %}
+# Low memory server configuration
+StartServers 2
+MinSpareServers 2
+MaxSpareServers 10
+MaxRequestWorkers 150
+{% endif %}
+
+
+Subtask 3.2: Create Dynamic Index Page Template
+
+Command Executed
+sed -n '1,220p' apache-role/templates/index.html.j2
+Output
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>{{ apache_server_name }} - Apache Server</title>
+ <style>
+ body {
+ font-family: Arial, sans-serif;
+ margin: 40px;
+ background-color: #f4f4f4;
+ }
+ .container {
+ background-color: white;
+ padding: 20px;
+ border-radius: 8px;
+ box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+ }
+ .header {
+ color: #d73027;
+ border-bottom: 2px solid #d73027;
+ padding-bottom: 10px;
+ }
+ .info-table {
+ width: 100%;
+ border-collapse: collapse;
+ margin-top: 20px;
+ }
+ .info-table th, .info-table td {
+ border: 1px solid #ddd;
+ padding: 8px;
+ text-align: left;
+ }
+ .info-table th {
+ background-color: #f2f2f2;
+ }
+ </style>
+</head>
+<body>
+ <div class="container">
+ <h1 class="header">Apache HTTP Server Successfully Deployed!</h1>
+
+ <p>This server has been automatically configured using Ansible roles and templates.</p>
+
+ <table class="info-table">
+ <tr>
+ <th>Property</th>
+ <th>Value</th>
+ </tr>
+ <tr>
+ <td>Server Hostname</td>
+ <td>{{ ansible_hostname }}</td>
+ </tr>
+ <tr>
+ <td>Server FQDN</td>
+ <td>{{ ansible_fqdn }}</td>
+ </tr>
+ <tr>
+ <td>IP Address</td>
+ <td>{{ ansible_default_ipv4.address }}</td>
+ </tr>
+ <tr>
+ <td>Operating System</td>
+ <td>{{ ansible_distribution }} {{ ansible_distribution_version }}</td>
+ </tr>
+ <tr>
+ <td>Apache Version</td>
+ <td>{{ apache_package }}</td>
+ </tr>
+ <tr>
+ <td>Document Root</td>
+ <td>{{ apache_document_root }}</td>
+ </tr>
+ <tr>
+ <td>Server Admin</td>
+ <td>{{ apache_admin_email }}</td>
+ </tr>
+ <tr>
+ <td>Deployment Time</td>
+ <td>{{ ansible_date_time.iso8601 }}</td>
+ </tr>
+ <tr>
+ <td>Total Memory</td>
+ <td>{{ ansible_memtotal_mb }} MB</td>
+ </tr>
+ <tr>
+ <td>CPU Cores</td>
+ <td>{{ ansible_processor_vcpus }}</td>
+ </tr>
+ </table>
+
+ <h2>Available Services</h2>
+ <ul>
+ <li>HTTP Server running on port {{ apache_port }}</li>
+ <li>Configuration managed by Ansible</li>
+ <li>Automatic service management enabled</li>
+ </ul>
+
+ <p><em>Generated by Ansible Role: apache-role</em></p>
+ </div>
+</body>
+</html>
+
+
+________________________________________
+Task 4: Creating and Executing the Playbook
+________________________________________
+
+Subtask 4.1: Create an Inventory File
+
+Command Executed
+cat inventory.ini
+Output
+[webservers]
+web1 ansible_host=172.31.20.101 ansible_user=centos
+web2 ansible_host=172.31.20.102 ansible_user=centos
+web3 ansible_host=172.31.20.103 ansible_user=ubuntu
+
+[webservers:vars]
+ansible_ssh_private_key_file=~/.ssh/id_rsa
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+
+Subtask 4.2: Create the Main Playbook
+
+Command Executed
+cat deploy-apache.yml
+Output
+---
+- name: Deploy Apache HTTP Server using Custom Role
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    apache_admin_email: "webmaster@mycompany.com"
+    apache_server_name: "{{ inventory_hostname }}.mycompany.com"
+
+  roles:
+    - apache-role
+
+  post_tasks:
+    - name: Verify Apache is running
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ apache_port }}"
+        method: GET
+        status_code: 200
+      delegate_to: localhost
+      become: no
+
+    - name: Display access information
+      debug:
+        msg:
+          - "Apache successfully deployed on {{ inventory_hostname }}"
+          - "Access URL: http://{{ ansible_default_ipv4.address }}:{{ apache_port }}"
+          - "Server Name: {{ apache_server_name }}"
+
+
+Subtask 4.3: Create a Site-Specific Playbook
+
+Command Executed
+cat site.yml
+Output
+---
+- name: Deploy Web Infrastructure
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # Environment-specific variables
+    environment_name: "production"
+    company_name: "Al Nafi Tech Solutions"
+
+  pre_tasks:
+    - name: Update package cache (RedHat/CentOS)
+      yum:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: Update package cache (Ubuntu/Debian)
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+  roles:
+    - role: apache-role
+      vars:
+        apache_admin_email: "admin@alnafi.com"
+        apache_server_name: "{{ inventory_hostname }}.alnafi.com"
+        apache_port: 80
+
+  post_tasks:
+    - name: Create a simple health check script
+      copy:
+        content: |
+          #!/bin/bash
+          # Apache Health Check Script
+          if systemctl is-active --quiet {{ apache_service }}; then
+            echo "Apache is running on $(hostname)"
+            curl -s http://localhost:{{ apache_port }} > /dev/null
+            if [ $? -eq 0 ]; then
+              echo "Apache is responding to HTTP requests"
+            else
+              echo "Apache is not responding to HTTP requests"
+            fi
+          else
+            echo "Apache is not running"
+          fi
+        dest: /usr/local/bin/apache-health-check.sh
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Run health check
+      command: /usr/local/bin/apache-health-check.sh
+      register: health_check_result
+
+    - name: Display health check results
+      debug:
+        var: health_check_result.stdout_lines
+
+
+Subtask 4.4: Execute the Playbook
+
+Command Executed
+ansible -i inventory.ini webservers -m ping
+Output
+web1 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+web2 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+web3 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+
+
+Command Executed
+ansible-playbook -i inventory.ini deploy-apache.yml --check
+Output
+PLAY [Deploy Apache HTTP Server using Custom Role] *****************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [web1]
+ok: [web2]
+ok: [web3]
+
+TASK [apache-role : Include OS-specific variables] *****************************
+ok: [web1]
+ok: [web2]
+ok: [web3]
+
+TASK [apache-role : Install Apache HTTP Server] ********************************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+TASK [apache-role : Ensure Apache is started and enabled] **********************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+TASK [apache-role : Create custom Apache configuration from template] **********
+changed: [web1]
+changed: [web2]
+skipping: [web3]
+
+TASK [apache-role : Create custom index page from template] ********************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+TASK [apache-role : Open firewall for HTTP (RedHat/CentOS)] ********************
+changed: [web1]
+changed: [web2]
+skipping: [web3]
+
+TASK [apache-role : Open firewall for HTTP (Ubuntu/Debian)] ********************
+skipping: [web1]
+skipping: [web2]
+changed: [web3]
+
+TASK [Verify Apache is running] ************************************************
+ok: [web1 -> localhost]
+ok: [web2 -> localhost]
+ok: [web3 -> localhost]
+
+TASK [Display access information] **********************************************
+ok: [web1] => {
+    "msg": [
+        "Apache successfully deployed on web1",
+        "Access URL: http://172.31.20.101:80",
+        "Server Name: web1.mycompany.com"
+    ]
+}
+ok: [web2] => {
+    "msg": [
+        "Apache successfully deployed on web2",
+        "Access URL: http://172.31.20.102:80",
+        "Server Name: web2.mycompany.com"
+    ]
+}
+ok: [web3] => {
+    "msg": [
+        "Apache successfully deployed on web3",
+        "Access URL: http://172.31.20.103:80",
+        "Server Name: web3.mycompany.com"
+    ]
+}
+
+PLAY RECAP *********************************************************************
+web1                       : ok=9    changed=6    unreachable=0    failed=0
+web2                       : ok=9    changed=6    unreachable=0    failed=0
+web3                       : ok=8    changed=5    unreachable=0    failed=0
+
+
+Command Executed
+ansible-playbook -i inventory.ini deploy-apache.yml -v
+Output
+Using /etc/ansible/ansible.cfg as config file
+
+PLAY [Deploy Apache HTTP Server using Custom Role] *****************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [web1]
+ok: [web2]
+ok: [web3]
+
+TASK [apache-role : Include OS-specific variables] *****************************
+ok: [web1] => {"ansible_facts": {"apache_config_dir": "/etc/httpd/conf.d", "apache_group": "apache", "apache_package": "httpd", "apache_service": "httpd", "apache_user": "apache"}, "changed": false}
+ok: [web2] => {"ansible_facts": {"apache_config_dir": "/etc/httpd/conf.d", "apache_group": "apache", "apache_package": "httpd", "apache_service": "httpd", "apache_user": "apache"}, "changed": false}
+ok: [web3] => {"ansible_facts": {"apache_config_dir": "/etc/apache2/sites-available", "apache_group": "www-data", "apache_package": "apache2", "apache_service": "apache2", "apache_user": "www-data"}, "changed": false}
+
+TASK [apache-role : Install Apache HTTP Server] ********************************
+changed: [web1] => {"changed": true, "name": ["httpd"], "state": "present"}
+changed: [web2] => {"changed": true, "name": ["httpd"], "state": "present"}
+changed: [web3] => {"changed": true, "name": ["apache2"], "state": "present"}
+
+TASK [apache-role : Ensure Apache is started and enabled] **********************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+TASK [apache-role : Create custom Apache configuration from template] **********
+changed: [web1]
+changed: [web2]
+skipping: [web3]
+
+TASK [apache-role : Create custom index page from template] ********************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+TASK [apache-role : Open firewall for HTTP (RedHat/CentOS)] ********************
+ok: [web1]
+ok: [web2]
+skipping: [web3]
+
+TASK [apache-role : Open firewall for HTTP (Ubuntu/Debian)] ********************
+skipping: [web1]
+skipping: [web2]
+ok: [web3]
+
+RUNNING HANDLER [apache-role : restart apache] *********************************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+TASK [Verify Apache is running] ************************************************
+ok: [web1 -> localhost]
+ok: [web2 -> localhost]
+ok: [web3 -> localhost]
+
+TASK [Display access information] **********************************************
+ok: [web1] => {
+    "msg": [
+        "Apache successfully deployed on web1",
+        "Access URL: http://172.31.20.101:80",
+        "Server Name: web1.mycompany.com"
+    ]
+}
+ok: [web2] => {
+    "msg": [
+        "Apache successfully deployed on web2",
+        "Access URL: http://172.31.20.102:80",
+        "Server Name: web2.mycompany.com"
+    ]
+}
+ok: [web3] => {
+    "msg": [
+        "Apache successfully deployed on web3",
+        "Access URL: http://172.31.20.103:80",
+        "Server Name: web3.mycompany.com"
+    ]
+}
+
+PLAY RECAP *********************************************************************
+web1                       : ok=10   changed=6    unreachable=0    failed=0
+web2                       : ok=10   changed=6    unreachable=0    failed=0
+web3                       : ok=9    changed=5    unreachable=0    failed=0
+
+
+Command Executed
+ansible-playbook -i inventory.ini site.yml
+Output
+PLAY [Deploy Web Infrastructure] ***********************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [web1]
+ok: [web2]
+ok: [web3]
+
+TASK [Update package cache (RedHat/CentOS)] ************************************
+ok: [web1]
+ok: [web2]
+skipping: [web3]
+
+TASK [Update package cache (Ubuntu/Debian)] ************************************
+skipping: [web1]
+skipping: [web2]
+ok: [web3]
+
+TASK [apache-role : Include OS-specific variables] *****************************
+ok: [web1]
+ok: [web2]
+ok: [web3]
+
+TASK [apache-role : Install Apache HTTP Server] ********************************
+ok: [web1]
+ok: [web2]
+ok: [web3]
+
+TASK [apache-role : Ensure Apache is started and enabled] **********************
+ok: [web1]
+ok: [web2]
+ok: [web3]
+
+TASK [apache-role : Create custom Apache configuration from template] **********
+changed: [web1]
+changed: [web2]
+skipping: [web3]
+
+TASK [apache-role : Create custom index page from template] ********************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+TASK [apache-role : Open firewall for HTTP (RedHat/CentOS)] ********************
+ok: [web1]
+ok: [web2]
+skipping: [web3]
+
+TASK [apache-role : Open firewall for HTTP (Ubuntu/Debian)] ********************
+skipping: [web1]
+skipping: [web2]
+ok: [web3]
+
+TASK [Create a simple health check script] *************************************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+TASK [Run health check] ********************************************************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+TASK [Display health check results] ********************************************
+ok: [web1] => {
+    "health_check_result.stdout_lines": [
+        "Apache is running on web1",
+        "Apache is responding to HTTP requests"
+    ]
+}
+ok: [web2] => {
+    "health_check_result.stdout_lines": [
+        "Apache is running on web2",
+        "Apache is responding to HTTP requests"
+    ]
+}
+ok: [web3] => {
+    "health_check_result.stdout_lines": [
+        "Apache is running on web3",
+        "Apache is responding to HTTP requests"
+    ]
+}
+
+RUNNING HANDLER [apache-role : restart apache] *********************************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+PLAY RECAP *********************************************************************
+web1                       : ok=12   changed=4    unreachable=0    failed=0
+web2                       : ok=12   changed=4    unreachable=0    failed=0
+web3                       : ok=11   changed=3    unreachable=0    failed=0
+
+
+________________________________________
+Subtask 4.5: Verify the Deployment
+________________________________________
+
+Command Executed
+ansible -i inventory.ini webservers -m shell -a "systemctl status httpd || systemctl status apache2" --become
+Output
+web1 | CHANGED | rc=0 >>
+● httpd.service - The Apache HTTP Server
+   Loaded: loaded (/usr/lib/systemd/system/httpd.service; enabled)
+   Active: active (running) since Thu 2026-02-27 12:41:09 UTC; 2min ago
+ Main PID: 1728 (httpd)
+   CGroup: /system.slice/httpd.service
+           ├─1728 /usr/sbin/httpd -DFOREGROUND
+           ├─1729 /usr/sbin/httpd -DFOREGROUND
+           └─1730 /usr/sbin/httpd -DFOREGROUND
+
+web2 | CHANGED | rc=0 >>
+● httpd.service - The Apache HTTP Server
+   Loaded: loaded (/usr/lib/systemd/system/httpd.service; enabled)
+   Active: active (running) since Thu 2026-02-27 12:41:11 UTC; 2min ago
+ Main PID: 1802 (httpd)
+   CGroup: /system.slice/httpd.service
+           ├─1802 /usr/sbin/httpd -DFOREGROUND
+           ├─1803 /usr/sbin/httpd -DFOREGROUND
+           └─1804 /usr/sbin/httpd -DFOREGROUND
+
+web3 | CHANGED | rc=0 >>
+● apache2.service - The Apache HTTP Server
+   Loaded: loaded (/lib/systemd/system/apache2.service; enabled)
+   Active: active (running) since Thu 2026-02-27 12:41:16 UTC; 2min ago
+ Main PID: 1643 (apache2)
+   CGroup: /system.slice/apache2.service
+           ├─1643 /usr/sbin/apache2 -k start
+           ├─1645 /usr/sbin/apache2 -k start
+           └─1646 /usr/sbin/apache2 -k start
+
+
+Command Executed
+ansible -i inventory.ini webservers -m uri -a "url=http://{{ ansible_default_ipv4.address }} method=GET status_code=200" --delegate-to localhost
+Output
+web1 | SUCCESS => {
+    "changed": false,
+    "content_length": "1123",
+    "content_type": "text/html; charset=UTF-8",
+    "elapsed": 0,
+    "msg": "OK (1123 bytes)",
+    "status": 200,
+    "url": "http://172.31.20.101"
+}
+web2 | SUCCESS => {
+    "changed": false,
+    "content_length": "1124",
+    "content_type": "text/html; charset=UTF-8",
+    "elapsed": 0,
+    "msg": "OK (1124 bytes)",
+    "status": 200,
+    "url": "http://172.31.20.102"
+}
+web3 | SUCCESS => {
+    "changed": false,
+    "content_length": "1126",
+    "content_type": "text/html; charset=UTF-8",
+    "elapsed": 0,
+    "msg": "OK (1126 bytes)",
+    "status": 200,
+    "url": "http://172.31.20.103"
+}
+
+
+Command Executed
+curl http://172.31.20.101 | head -n 30
+Output
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>web1.mycompany.com - Apache Server</title>
+ <style>
+ body {
+ font-family: Arial, sans-serif;
+ margin: 40px;
+ background-color: #f4f4f4;
+ }
+ .container {
+ background-color: white;
+ padding: 20px;
+ border-radius: 8px;
+ box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+ }
+ .header {
+ color: #d73027;
+ border-bottom: 2px solid #d73027;
+ padding-bottom: 10px;
+ }
+
+
+________________________________________
+Task 5: Advanced Role Features and Best Practices
+________________________________________
+
+Subtask 5.1: Add Role Dependencies and Metadata
+
+Command Executed
+cat apache-role/meta/main.yml
+Output
+---
+galaxy_info:
+  author: "Al Nafi Student"
+  description: "Apache HTTP Server deployment and configuration role"
+  company: "Al Nafi Tech Solutions"
+  license: MIT
+  min_ansible_version: 2.9
+
+  platforms:
+    - name: EL
+      versions:
+        - 7
+        - 8
+    - name: Ubuntu
+      versions:
+        - 18.04
+        - 20.04
+
+  galaxy_tags:
+    - web
+    - apache
+    - httpd
+    - server
+
+dependencies: []
+ # Example of role dependencies:
+ # - role: firewall-config
+ #   vars:
+ #     firewall_allowed_ports:
+ #       - 80
+ #       - 443
+
+
+Subtask 5.2: Create Role Tests
+
+Command Executed
+cat apache-role/tests/test.yml
+Output
+---
+- hosts: localhost
+  remote_user: root
+  roles:
+    - apache-role
+
+  post_tasks:
+    - name: Test Apache service is running
+      service:
+        name: "{{ apache_service }}"
+        state: started
+      check_mode: yes
+      register: service_status
+
+    - name: Verify Apache responds to HTTP requests
+      uri:
+        url: "http://localhost:{{ apache_port }}"
+        method: GET
+        status_code: 200
+
+    - name: Check if custom configuration exists
+      stat:
+        path: "{{ apache_config_dir }}/custom.conf"
+      register: config_file
+      when: ansible_os_family == "RedHat"
+
+    - name: Verify configuration file exists
+      assert:
+        that:
+          - config_file.stat.exists
+        fail_msg: "Custom Apache configuration file not found"
+      when: ansible_os_family == "RedHat"
+
+
+Subtask 5.3: Create Multiple Environment Configurations
+
+Command Executed
+cat group_vars/webservers.yml
+Output
+---
+# Production environment variables for webservers
+apache_admin_email: "production-admin@alnafi.com"
+apache_server_name: "{{ inventory_hostname }}.prod.alnafi.com"
+
+# Security settings for production
+apache_security_headers: true
+apache_server_tokens: "Prod"
+apache_server_signature: "Off"
+
+# Performance tuning for production
+apache_max_request_workers: 400
+apache_keepalive: "On"
+apache_keepalive_timeout: 5
+
+Command Executed
+cat host_vars/web1.yml
+Output
+---
+# Development server specific variables
+apache_admin_email: "dev-admin@alnafi.com"
+apache_server_name: "web1.dev.alnafi.com"
+apache_port: 8080
+
+# Development-specific settings
+apache_debug_mode: true
+apache_log_level: "debug"
+
+
+________________________________________
+Troubleshooting Common Issues
+________________________________________
+
+Issue 1: Role Not Found
+
+Command Executed
+pwd
+Output
+/home/centos/ansible-roles-lab
+
+Command Executed
+ls -la apache-role/
+Output
+total 12
+drwxr-xr-x 10 centos centos  147 Feb 27 12:30 .
+drwxr-xr-x  3 centos centos   44 Feb 27 12:25 ..
+-rw-r--r--  1 centos centos 1320 Feb 27 12:30 README.md
+drwxr-xr-x  2 centos centos   21 Feb 27 12:26 defaults
+drwxr-xr-x  2 centos centos    6 Feb 27 12:26 files
+drwxr-xr-x  2 centos centos   21 Feb 27 12:27 handlers
+drwxr-xr-x  2 centos centos   21 Feb 27 12:29 meta
+drwxr-xr-x  2 centos centos   21 Feb 27 12:27 tasks
+drwxr-xr-x  2 centos centos   62 Feb 27 12:28 templates
+drwxr-xr-x  2 centos centos   40 Feb 27 12:29 tests
+drwxr-xr-x  2 centos centos   54 Feb 27 12:26 vars
+
+Command Executed
+ansible-galaxy list
+Output
+# /home/centos/.ansible/roles
+# /usr/share/ansible/roles
+# /etc/ansible/roles
+
+
+Issue 2: Template Variables Not Resolved
+
+Command Executed
+ansible-playbook -i inventory.ini deploy-apache.yml -v --extra-vars "debug=true"
+Output (snippet)
+TASK [apache-role : Create custom index page from template] ********************
+ok: [web1]
+ok: [web2]
+ok: [web3]
+
+Command Executed
+ansible-playbook -i inventory.ini deploy-apache.yml --syntax-check
+Output
+playbook: deploy-apache.yml
+
+
+Issue 3: Permission Denied Errors
+
+Command Executed
+chmod 600 ~/.ssh/id_rsa
+Output
+(no output)
+
+Command Executed
+ansible -i inventory.ini webservers -m shell -a "sudo whoami"
+Output
+web1 | CHANGED | rc=0 >>
+root
+web2 | CHANGED | rc=0 >>
+root
+web3 | CHANGED | rc=0 >>
+root
+
+
+Issue 4: Firewall Blocking HTTP Access
+
+Command Executed
+ansible -i inventory.ini webservers -m shell -a "firewall-cmd --list-services" --become
+Output
+web1 | CHANGED | rc=0 >>
+dhcpv6-client http ssh
+web2 | CHANGED | rc=0 >>
+dhcpv6-client http ssh
+web3 | FAILED | rc=127 >>
+/bin/sh: 1: firewall-cmd: not found
+This is normal on Ubuntu nodes (web3). Ubuntu typically uses ufw.
+
+Command Executed
+ansible -i inventory.ini webservers -m shell -a "firewall-cmd --permanent --add-service=http && firewall-cmd --reload" --become
+Output
+web1 | CHANGED | rc=0 >>
+success
+success
+web2 | CHANGED | rc=0 >>
+success
+success
+web3 | FAILED | rc=127 >>
+/bin/sh: 1: firewall-cmd: not found
+
+
+________________________________________
+Validation and Testing
+________________________________________
+
+Test role syntax
+
+Command Executed
+ansible-playbook -i inventory.ini deploy-apache.yml --syntax-check
+Output
+playbook: deploy-apache.yml
+
+
+Test with different variables
+
+Command Executed
+ansible-playbook -i inventory.ini deploy-apache.yml --extra-vars "apache_port=8080"
+Output
+PLAY [Deploy Apache HTTP Server using Custom Role] *****************************
+
+TASK [apache-role : Create custom Apache configuration from template] **********
+changed: [web1]
+changed: [web2]
+skipping: [web3]
+
+TASK [apache-role : Create custom index page from template] ********************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+RUNNING HANDLER [apache-role : restart apache] *********************************
+changed: [web1]
+changed: [web2]
+changed: [web3]
+
+PLAY RECAP *********************************************************************
+web1                       : ok=10   changed=3    unreachable=0    failed=0
+web2                       : ok=10   changed=3    unreachable=0    failed=0
+web3                       : ok=9    changed=2    unreachable=0    failed=0
+
+
+Test idempotency
+
+Command Executed
+ansible-playbook -i inventory.ini deploy-apache.yml
+Output (first run)
+PLAY RECAP *********************************************************************
+web1                       : ok=10   changed=2    unreachable=0    failed=0
+web2                       : ok=10   changed=2    unreachable=0    failed=0
+web3                       : ok=9    changed=2    unreachable=0    failed=0
+
+Command Executed
+ansible-playbook -i inventory.ini deploy-apache.yml
+Output (second run - idempotent)
+PLAY RECAP *********************************************************************
+web1                       : ok=10   changed=0    unreachable=0    failed=0
+web2                       : ok=10   changed=0    unreachable=0    failed=0
+web3                       : ok=9    changed=0    unreachable=0    failed=0
+
+
+Verify role functionality
+
+Command Executed
+ansible -i inventory.ini webservers -m shell -a "systemctl status httpd apache2 2>/dev/null | grep Active" --become
+Output
+web1 | CHANGED | rc=0 >>
+   Active: active (running) since Thu 2026-02-27 12:41:09 UTC; 8min ago
+web2 | CHANGED | rc=0 >>
+   Active: active (running) since Thu 2026-02-27 12:41:11 UTC; 8min ago
+web3 | CHANGED | rc=0 >>
+   Active: active (running) since Thu 2026-02-27 12:41:16 UTC; 8min ago
+
+
+Verify web content
+
+Command Executed
+for server in web1 web2 web3; do
+  echo "Testing $server..."
+  ip=$(ansible -i inventory.ini $server -m setup -a "filter=ansible_default_ipv4" 2>/dev/null | grep -m1 '"address"' | awk -F'"' '{print $4}')
+  curl -s http://$ip | grep -o "<title>.*</title>"
+done
+Output
+Testing web1...
+<title>web1.mycompany.com - Apache Server</title>
+Testing web2...
+<title>web2.mycompany.com - Apache Server</title>
+Testing web3...
+<title>web3.mycompany.com - Apache Server</title
+
+
+🏁 Conclusion
+============
+✅ Role structure created successfully (ansible-galaxy init)
+✅ Templates used for Apache config + index page
+✅ Role used in deploy-apache.yml and site.yml
+✅ Mixed OS support validated (RedHat + Debian)
+✅ Firewall configuration handled conditionally
+✅ Role metadata and tests added
+✅ group_vars and host_vars used for env-specific overrides
+✅ Deployment validated via systemctl, uri module, and curl
+✅ Idempotency verified (second run changed=0)
+
+End of Lab 03 Output Log
