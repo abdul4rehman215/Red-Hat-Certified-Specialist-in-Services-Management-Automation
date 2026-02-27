@@ -1,0 +1,10 @@
+---
+tuned_profile: web-server-optimized
+server_type: web
+monitoring_enabled: true
+
+# Web server specific tuning parameters
+web_tuning:
+  max_connections: 1000
+  keepalive_timeout: 65
+  worker_processes: auto
