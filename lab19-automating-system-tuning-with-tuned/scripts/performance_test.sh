@@ -1,0 +1,23 @@
+#!/bin/bash
+echo "=== System Performance Baseline ==="
+echo "Current tuned profile: $(tuned-adm active)"
+echo "Date: $(date)"
+echo ""
+echo "=== CPU Information ==="
+lscpu | grep -E "CPU\(s\)|Thread|Core|Socket"
+echo ""
+echo "=== Memory Information ==="
+free -h
+echo ""
+echo "=== Key Kernel Parameters ==="
+echo "vm.swappiness: $(sysctl -n vm.swappiness)"
+echo "vm.dirty_ratio: $(sysctl -n vm.dirty_ratio)"
+echo "kernel.sched_min_granularity_ns: $(sysctl -n kernel.sched_min_granularity_ns)"
+echo "net.core.rmem_max: $(sysctl -n net.core.rmem_max)"
+echo ""
+echo "=== CPU Governor ==="
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo "CPU governor info not available"
+echo ""
+echo "=== Load Average ==="
+uptime
+echo ""
