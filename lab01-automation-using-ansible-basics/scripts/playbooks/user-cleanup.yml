@@ -1,0 +1,52 @@
+---
+- name: User Account Cleanup
+  hosts: all
+  become: yes
+  vars:
+    users_to_remove:
+      - testuser1
+      - tempuser
+      - olduser
+
+  tasks:
+    - name: Check if users exist before removal
+      getent:
+        database: passwd
+        key: "{{ item }}"
+      register: user_check
+      failed_when: false
+      loop: "{{ users_to_remove }}"
+
+    - name: Remove specified user accounts
+      user:
+        name: "{{ item }}"
+        state: absent
+        remove: yes
+        force: yes
+      loop: "{{ users_to_remove }}"
+      ignore_errors: yes
+
+    - name: Archive old user home directories
+      archive:
+        path: "/home/{{ item }}"
+        dest: "/var/backups/{{ item }}-{{ ansible_date_time.date }}.tar.gz"
+        remove: yes
+      loop: "{{ users_to_remove }}"
+      ignore_errors: yes
+
+    - name: Clean up temporary files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/user-*
+        - /var/tmp/user-*
+      ignore_errors: yes
+
+    - name: Update user count statistics
+      shell: "wc -l /etc/passwd"
+      register: user_count
+
+    - name: Display user statistics
+      debug:
+        msg: "Total users on {{ ansible_hostname }}: {{ user_count.stdout.split()[0] }}"
