@@ -1,0 +1,23 @@
+# Basic Postfix Configuration for Email Sending
+compatibility_level = 2
+
+# Network settings
+inet_interfaces = all
+inet_protocols = ipv4
+mydestination = $myhostname, localhost.$mydomain, localhost
+myorigin = $mydomain
+
+# Basic mail handling
+home_mailbox = Maildir/
+mailbox_command =
+
+# Message size limits
+message_size_limit = 10240000
+mailbox_size_limit = 1024000000
+
+# Queue settings
+maximal_queue_lifetime = 1d
+bounce_queue_lifetime = 1d
+
+# Logging
+maillog_file = /var/log/postfix.log
