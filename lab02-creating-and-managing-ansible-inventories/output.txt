@@ -1,0 +1,1607 @@
+Lab 2: Creating and Managing Ansible Inventories
+================================================
+
+Objectives
+----------
+• Understand the fundamentals of Ansible inventory management
+• Create and configure static inventory files with multiple host groups
+• Implement dynamic inventories to automatically discover cloud resources
+• Test and validate inventory configurations using Ansible commands
+• Apply inventory best practices for scalable automation environments
+• Troubleshoot common inventory-related issues
+
+Environment Notes
+-----------------
+Terminal prompt format: -bash-4.2$
+Network interface naming: eth0
+Control node working directory: /home/ansible
+
+
+________________________________________
+Task 1: Creating Static Inventory Files with Multiple Host Groups
+________________________________________
+
+Subtask 1.1: Understanding Inventory File Structure
+
+-bash-4.2$ cd /home/ansible
+-bash-4.2$ mkdir lab2-inventories
+-bash-4.2$ cd lab2-inventories
+-bash-4.2$ pwd
+/home/ansible/lab2-inventories
+
+
+Step 2: Create Your First Basic Inventory File
+(File created: basic_inventory.ini)
+
+-bash-4.2$ ansible-inventory -i basic_inventory.ini --list
+{
+  "_meta": {
+    "hostvars": {
+      "192.168.1.10": {},
+      "192.168.1.20": {},
+      "db1.example.com": {},
+      "db2.example.com": {},
+      "monitor.example.com": {
+        "ansible_host": "192.168.1.30"
+      },
+      "web1.example.com": {},
+      "web2.example.com": {}
+    }
+  },
+  "all": {
+    "children": [
+      "databases",
+      "monitoring",
+      "ungrouped",
+      "webservers"
+    ]
+  },
+  "databases": {
+    "hosts": [
+      "db1.example.com",
+      "db2.example.com",
+      "192.168.1.20"
+    ]
+  },
+  "monitoring": {
+    "hosts": [
+      "monitor.example.com"
+    ]
+  },
+  "webservers": {
+    "hosts": [
+      "web1.example.com",
+      "web2.example.com",
+      "192.168.1.10"
+    ]
+  }
+}
+
+
+________________________________________
+Subtask 1.2: Creating Advanced Inventory with Variables
+________________________________________
+
+(File created: production_inventory.ini)
+
+-bash-4.2$ ansible-inventory -i production_inventory.ini --list
+{
+  "_meta": {
+    "hostvars": {
+      "db01": {
+        "ansible_host": "10.0.2.10",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/db_key",
+        "ansible_user": "dbadmin",
+        "backup_schedule": "daily",
+        "mysql_port": 3306,
+        "mysql_root_password": "SecurePass123"
+      },
+      "db02": {
+        "ansible_host": "10.0.2.11",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/db_key",
+        "ansible_user": "dbadmin",
+        "backup_schedule": "daily",
+        "mysql_port": 3306,
+        "mysql_root_password": "SecurePass123"
+      },
+      "lb01": {
+        "ansible_host": "10.0.3.10",
+        "ansible_user": "lbadmin"
+      },
+      "monitor01": {
+        "ansible_host": "10.0.4.10",
+        "ansible_user": "monitor"
+      },
+      "web01": {
+        "ansible_host": "10.0.1.10",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key",
+        "ansible_user": "webadmin",
+        "app_version": "2.1.0",
+        "environment": "production",
+        "http_port": 80
+      },
+      "web02": {
+        "ansible_host": "10.0.1.11",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key",
+        "ansible_user": "webadmin",
+        "app_version": "2.1.0",
+        "environment": "production",
+        "http_port": 80
+      },
+      "web03": {
+        "ansible_host": "10.0.1.12",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key",
+        "ansible_user": "webadmin",
+        "app_version": "2.1.0",
+        "environment": "production",
+        "http_port": 8080
+      }
+    }
+  },
+  "all": {
+    "children": [
+      "databases",
+      "loadbalancers",
+      "monitoring",
+      "production",
+      "ungrouped",
+      "webservers"
+    ]
+  },
+  "databases": {
+    "hosts": [
+      "db01",
+      "db02"
+    ]
+  },
+  "loadbalancers": {
+    "hosts": [
+      "lb01"
+    ]
+  },
+  "monitoring": {
+    "hosts": [
+      "monitor01"
+    ]
+  },
+  "production": {
+    "children": [
+      "databases",
+      "loadbalancers",
+      "monitoring",
+      "webservers"
+    ],
+    "vars": {
+      "ansible_ssh_common_args": "-o StrictHostKeyChecking=no",
+      "datacenter": "us-east-1"
+    }
+  },
+  "webservers": {
+    "hosts": [
+      "web01",
+      "web02",
+      "web03"
+    ]
+  }
+}
+
+-bash-4.2$ ansible-inventory -i production_inventory.ini --list --limit webservers
+{
+  "_meta": {
+    "hostvars": {
+      "web01": {
+        "ansible_host": "10.0.1.10",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key",
+        "ansible_user": "webadmin",
+        "app_version": "2.1.0",
+        "environment": "production",
+        "http_port": 80
+      },
+      "web02": {
+        "ansible_host": "10.0.1.11",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key",
+        "ansible_user": "webadmin",
+        "app_version": "2.1.0",
+        "environment": "production",
+        "http_port": 80
+      },
+      "web03": {
+        "ansible_host": "10.0.1.12",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key",
+        "ansible_user": "webadmin",
+        "app_version": "2.1.0",
+        "environment": "production",
+        "http_port": 8080
+      }
+    }
+  },
+  "all": {
+    "children": [
+      "webservers"
+    ]
+  },
+  "webservers": {
+    "hosts": [
+      "web01",
+      "web02",
+      "web03"
+    ]
+  }
+}
+
+-bash-4.2$ ansible-inventory -i production_inventory.ini --list --yaml
+_meta:
+  hostvars:
+    db01:
+      ansible_host: 10.0.2.10
+      ansible_ssh_private_key_file: /home/ansible/.ssh/db_key
+      ansible_user: dbadmin
+      backup_schedule: daily
+      mysql_port: 3306
+      mysql_root_password: SecurePass123
+    db02:
+      ansible_host: 10.0.2.11
+      ansible_ssh_private_key_file: /home/ansible/.ssh/db_key
+      ansible_user: dbadmin
+      backup_schedule: daily
+      mysql_port: 3306
+      mysql_root_password: SecurePass123
+    lb01:
+      ansible_host: 10.0.3.10
+      ansible_user: lbadmin
+    monitor01:
+      ansible_host: 10.0.4.10
+      ansible_user: monitor
+    web01:
+      ansible_host: 10.0.1.10
+      ansible_ssh_private_key_file: /home/ansible/.ssh/web_key
+      ansible_user: webadmin
+      app_version: 2.1.0
+      environment: production
+      http_port: 80
+    web02:
+      ansible_host: 10.0.1.11
+      ansible_ssh_private_key_file: /home/ansible/.ssh/web_key
+      ansible_user: webadmin
+      app_version: 2.1.0
+      environment: production
+      http_port: 80
+    web03:
+      ansible_host: 10.0.1.12
+      ansible_ssh_private_key_file: /home/ansible/.ssh/web_key
+      ansible_user: webadmin
+      app_version: 2.1.0
+      environment: production
+      http_port: 8080
+all:
+  children:
+  - databases
+  - loadbalancers
+  - monitoring
+  - production
+  - ungrouped
+  - webservers
+databases:
+  hosts:
+  - db01
+  - db02
+loadbalancers:
+  hosts:
+  - lb01
+monitoring:
+  hosts:
+  - monitor01
+production:
+  children:
+  - databases
+  - loadbalancers
+  - monitoring
+  - webservers
+  vars:
+    ansible_ssh_common_args: -o StrictHostKeyChecking=no
+    datacenter: us-east-1
+webservers:
+  hosts:
+  - web01
+  - web02
+  - web03
+
+
+________________________________________
+Subtask 1.3: Creating YAML Format Inventory
+________________________________________
+
+(File created: inventory.yml)
+
+-bash-4.2$ ansible-inventory -i inventory.yml --list
+{
+  "_meta": {
+    "hostvars": {
+      "db01": {
+        "ansible_host": "10.0.2.10",
+        "ansible_user": "dbadmin",
+        "backup_schedule": "daily",
+        "db_role": "master",
+        "mysql_port": 3306,
+        "mysql_version": "8.0",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/db_key"
+      },
+      "db02": {
+        "ansible_host": "10.0.2.11",
+        "ansible_user": "dbadmin",
+        "backup_schedule": "daily",
+        "db_role": "slave",
+        "mysql_port": 3306,
+        "mysql_version": "8.0",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/db_key"
+      },
+      "lb01": {
+        "ansible_host": "10.0.3.10",
+        "ansible_user": "lbadmin",
+        "lb_algorithm": "round_robin"
+      },
+      "monitor01": {
+        "ansible_host": "10.0.4.10",
+        "ansible_user": "monitor",
+        "monitoring_tools": [
+          "nagios",
+          "grafana"
+        ]
+      },
+      "web01": {
+        "ansible_host": "10.0.1.10",
+        "ansible_user": "webadmin",
+        "app_version": "2.1.0",
+        "environment": "production",
+        "http_port": 80,
+        "server_role": "frontend",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key"
+      },
+      "web02": {
+        "ansible_host": "10.0.1.11",
+        "ansible_user": "webadmin",
+        "app_version": "2.1.0",
+        "environment": "production",
+        "http_port": 80,
+        "server_role": "frontend",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key"
+      },
+      "web03": {
+        "ansible_host": "10.0.1.12",
+        "ansible_user": "webadmin",
+        "app_version": "2.1.0",
+        "environment": "production",
+        "http_port": 8080,
+        "server_role": "api",
+        "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key"
+      }
+    }
+  },
+  "all": {
+    "children": [
+      "databases",
+      "loadbalancers",
+      "monitoring",
+      "production",
+      "ungrouped",
+      "webservers"
+    ]
+  },
+  "databases": {
+    "hosts": [
+      "db01",
+      "db02"
+    ]
+  },
+  "loadbalancers": {
+    "hosts": [
+      "lb01"
+    ]
+  },
+  "monitoring": {
+    "hosts": [
+      "monitor01"
+    ]
+  },
+  "production": {
+    "children": [
+      "databases",
+      "loadbalancers",
+      "monitoring",
+      "webservers"
+    ],
+    "vars": {
+      "backup_retention": 30,
+      "datacenter": "us-east-1",
+      "security_level": "high"
+    }
+  },
+  "webservers": {
+    "hosts": [
+      "web01",
+      "web02",
+      "web03"
+    ]
+  }
+}
+
+-bash-4.2$ ansible-inventory -i inventory.yml --host web01
+{
+  "ansible_host": "10.0.1.10",
+  "ansible_user": "webadmin",
+  "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key",
+  "app_version": "2.1.0",
+  "environment": "production",
+  "http_port": 80,
+  "server_role": "frontend"
+}
+
+-bash-4.2$ ansible-inventory -i inventory.yml --graph
+@all:
+  |--@databases:
+  |  |--db01
+  |  |--db02
+  |--@loadbalancers:
+  |  |--lb01
+  |--@monitoring:
+  |  |--monitor01
+  |--@production:
+  |  |--@databases:
+  |  |--@loadbalancers:
+  |  |--@monitoring:
+  |  |--@webservers:
+  |--@ungrouped:
+  |--@webservers:
+  |  |--web01
+  |  |--web02
+  |  |--web03
+
+
+________________________________________
+Task 2: Implementing Dynamic Inventories for Cloud Providers
+________________________________________
+
+Subtask 2.1: Setting Up AWS Dynamic Inventory
+
+-bash-4.2$ pip3 install boto3 botocore
+Collecting boto3
+  Downloading boto3-1.34.154-py3-none-any.whl (139 kB)
+Collecting botocore
+  Downloading botocore-1.34.154-py3-none-any.whl (12.3 MB)
+Collecting jmespath<2.0.0,>=0.7.1
+  Downloading jmespath-1.0.1-py3-none-any.whl (20 kB)
+Collecting s3transfer<0.11.0,>=0.10.0
+  Downloading s3transfer-0.10.2-py3-none-any.whl (82 kB)
+Requirement already satisfied: python-dateutil<3.0.0,>=2.1 in /usr/lib/python3.9/site-packages (from botocore) (2.8.1)
+Requirement already satisfied: urllib3<3,>=1.25.4 in /usr/lib/python3.9/site-packages (from botocore) (1.26.5)
+Requirement already satisfied: six>=1.5 in /usr/lib/python3.9/site-packages (from python-dateutil<3.0.0,>=2.1->botocore) (1.15.0)
+Installing collected packages: jmespath, botocore, s3transfer, boto3
+Successfully installed boto3-1.34.154 botocore-1.34.154 jmespath-1.0.1 s3transfer-0.10.2
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager.
+
+-bash-4.2$ python3 -c "import boto3; print('boto3 installed successfully')"
+boto3 installed successfully
+
+
+AWS Credentials (file content as created)
+
+File: ~/.aws/credentials
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY_ID
+aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
+region = us-east-1
+
+File: ~/.aws/config
+[default]
+region = us-east-1
+output = json
+
+
+-bash-4.2$ chmod +x aws_ec2_inventory.py
+
+-bash-4.2$ ./aws_ec2_inventory.py --list
+{
+  "_meta": {
+    "hostvars": {
+      "alnafi-control-01": {
+        "ansible_host": "3.91.44.18",
+        "ec2_instance_id": "i-0a12bc34d56ef7890",
+        "ec2_instance_type": "t3.medium",
+        "ec2_private_ip": "10.0.0.10",
+        "ec2_public_ip": "3.91.44.18",
+        "ec2_state": "running",
+        "ec2_tags": {
+          "Name": "alnafi-control-01",
+          "Environment": "production",
+          "Application": "ansible-lab",
+          "Owner": "student"
+        }
+      },
+      "alnafi-web-01": {
+        "ansible_host": "10.0.1.10",
+        "ec2_instance_id": "i-0b98aa77cc66dd55e",
+        "ec2_instance_type": "t3.small",
+        "ec2_private_ip": "10.0.1.10",
+        "ec2_public_ip": "",
+        "ec2_state": "running",
+        "ec2_tags": {
+          "Name": "alnafi-web-01",
+          "Environment": "production",
+          "Application": "ansible-lab",
+          "Role": "web"
+        }
+      },
+      "alnafi-web-02": {
+        "ansible_host": "10.0.1.11",
+        "ec2_instance_id": "i-0c11de22fa33bc44d",
+        "ec2_instance_type": "t3.small",
+        "ec2_private_ip": "10.0.1.11",
+        "ec2_public_ip": "",
+        "ec2_state": "running",
+        "ec2_tags": {
+          "Name": "alnafi-web-02",
+          "Environment": "production",
+          "Application": "ansible-lab",
+          "Role": "web"
+        }
+      },
+      "alnafi-db-01": {
+        "ansible_host": "10.0.2.10",
+        "ec2_instance_id": "i-0123ff45aa67bb89c",
+        "ec2_instance_type": "t3.small",
+        "ec2_private_ip": "10.0.2.10",
+        "ec2_public_ip": "",
+        "ec2_state": "running",
+        "ec2_tags": {
+          "Name": "alnafi-db-01",
+          "Environment": "production",
+          "Application": "ansible-lab",
+          "Role": "database"
+        }
+      }
+    }
+  },
+  "name_alnafi_control_01": {
+    "hosts": [
+      "alnafi-control-01"
+    ]
+  },
+  "environment_production": {
+    "hosts": [
+      "alnafi-control-01",
+      "alnafi-web-01",
+      "alnafi-web-02",
+      "alnafi-db-01"
+    ]
+  },
+  "application_ansible_lab": {
+    "hosts": [
+      "alnafi-control-01",
+      "alnafi-web-01",
+      "alnafi-web-02",
+      "alnafi-db-01"
+    ]
+  },
+  "owner_student": {
+    "hosts": [
+      "alnafi-control-01"
+    ]
+  },
+  "type_t3_medium": {
+    "hosts": [
+      "alnafi-control-01"
+    ]
+  },
+  "name_alnafi_web_01": {
+    "hosts": [
+      "alnafi-web-01"
+    ]
+  },
+  "role_web": {
+    "hosts": [
+      "alnafi-web-01",
+      "alnafi-web-02"
+    ]
+  },
+  "type_t3_small": {
+    "hosts": [
+      "alnafi-web-01",
+      "alnafi-web-02",
+      "alnafi-db-01"
+    ]
+  },
+  "name_alnafi_web_02": {
+    "hosts": [
+      "alnafi-web-02"
+    ]
+  },
+  "name_alnafi_db_01": {
+    "hosts": [
+      "alnafi-db-01"
+    ]
+  },
+  "role_database": {
+    "hosts": [
+      "alnafi-db-01"
+    ]
+  }
+}
+
+-bash-4.2$ ansible-inventory -i aws_ec2_inventory.py --list
+{
+  "_meta": {
+    "hostvars": {
+      "alnafi-control-01": {
+        "ansible_host": "3.91.44.18",
+        "ec2_instance_id": "i-0a12bc34d56ef7890",
+        "ec2_instance_type": "t3.medium",
+        "ec2_private_ip": "10.0.0.10",
+        "ec2_public_ip": "3.91.44.18",
+        "ec2_state": "running",
+        "ec2_tags": {
+          "Application": "ansible-lab",
+          "Environment": "production",
+          "Name": "alnafi-control-01",
+          "Owner": "student"
+        }
+      },
+      "alnafi-db-01": {
+        "ansible_host": "10.0.2.10",
+        "ec2_instance_id": "i-0123ff45aa67bb89c",
+        "ec2_instance_type": "t3.small",
+        "ec2_private_ip": "10.0.2.10",
+        "ec2_public_ip": "",
+        "ec2_state": "running",
+        "ec2_tags": {
+          "Application": "ansible-lab",
+          "Environment": "production",
+          "Name": "alnafi-db-01",
+          "Role": "database"
+        }
+      },
+      "alnafi-web-01": {
+        "ansible_host": "10.0.1.10",
+        "ec2_instance_id": "i-0b98aa77cc66dd55e",
+        "ec2_instance_type": "t3.small",
+        "ec2_private_ip": "10.0.1.10",
+        "ec2_public_ip": "",
+        "ec2_state": "running",
+        "ec2_tags": {
+          "Application": "ansible-lab",
+          "Environment": "production",
+          "Name": "alnafi-web-01",
+          "Role": "web"
+        }
+      },
+      "alnafi-web-02": {
+        "ansible_host": "10.0.1.11",
+        "ec2_instance_id": "i-0c11de22fa33bc44d",
+        "ec2_instance_type": "t3.small",
+        "ec2_private_ip": "10.0.1.11",
+        "ec2_public_ip": "",
+        "ec2_state": "running",
+        "ec2_tags": {
+          "Application": "ansible-lab",
+          "Environment": "production",
+          "Name": "alnafi-web-02",
+          "Role": "web"
+        }
+      }
+    }
+  }
+}
+
+
+________________________________________
+Subtask 2.2: Using Ansible's Built-in AWS EC2 Plugin
+________________________________________
+
+(File created: aws_ec2.yml)
+
+-bash-4.2$ ansible-galaxy collection install amazon.aws
+Starting galaxy collection install process
+Process install dependency map
+Starting collection install process
+Installing 'amazon.aws:8.2.0' to '/home/ansible/.ansible/collections/ansible_collections/amazon/aws'
+amazon.aws:8.2.0 was installed successfully
+
+-bash-4.2$ ansible-inventory -i aws_ec2.yml --list
+{
+  "_meta": {
+    "hostvars": {
+      "alnafi-control-01": {
+        "ansible_host": "3.91.44.18",
+        "ec2_instance_type": "t3.medium",
+        "ec2_placement_az": "us-east-1a",
+        "ec2_state": "running"
+      },
+      "alnafi-db-01": {
+        "ansible_host": "10.0.2.10",
+        "ec2_instance_type": "t3.small",
+        "ec2_placement_az": "us-east-1a",
+        "ec2_state": "running"
+      },
+      "alnafi-web-01": {
+        "ansible_host": "10.0.1.10",
+        "ec2_instance_type": "t3.small",
+        "ec2_placement_az": "us-east-1a",
+        "ec2_state": "running"
+      },
+      "alnafi-web-02": {
+        "ansible_host": "10.0.1.11",
+        "ec2_instance_type": "t3.small",
+        "ec2_placement_az": "us-east-1b",
+        "ec2_state": "running"
+      }
+    }
+  },
+  "all": {
+    "children": [
+      "az_us_east_1a",
+      "az_us_east_1b",
+      "env_production",
+      "app_ansible_lab",
+      "type_t3_small",
+      "type_t3_medium",
+      "ungrouped"
+    ]
+  },
+  "app_ansible_lab": {
+    "hosts": [
+      "alnafi-control-01",
+      "alnafi-db-01",
+      "alnafi-web-01",
+      "alnafi-web-02"
+    ]
+  },
+  "env_production": {
+    "hosts": [
+      "alnafi-control-01",
+      "alnafi-db-01",
+      "alnafi-web-01",
+      "alnafi-web-02"
+    ]
+  },
+  "type_t3_medium": {
+    "hosts": [
+      "alnafi-control-01"
+    ]
+  },
+  "type_t3_small": {
+    "hosts": [
+      "alnafi-db-01",
+      "alnafi-web-01",
+      "alnafi-web-02"
+    ]
+  },
+  "az_us_east_1a": {
+    "hosts": [
+      "alnafi-control-01",
+      "alnafi-db-01",
+      "alnafi-web-01"
+    ]
+  },
+  "az_us_east_1b": {
+    "hosts": [
+      "alnafi-web-02"
+    ]
+  }
+}
+
+-bash-4.2$ ansible-inventory -i aws_ec2.yml --graph
+@all:
+  |--@app_ansible_lab:
+  |  |--alnafi-control-01
+  |  |--alnafi-db-01
+  |  |--alnafi-web-01
+  |  |--alnafi-web-02
+  |--@az_us_east_1a:
+  |  |--alnafi-control-01
+  |  |--alnafi-db-01
+  |  |--alnafi-web-01
+  |--@az_us_east_1b:
+  |  |--alnafi-web-02
+  |--@env_production:
+  |  |--alnafi-control-01
+  |  |--alnafi-db-01
+  |  |--alnafi-web-01
+  |  |--alnafi-web-02
+  |--@type_t3_medium:
+  |  |--alnafi-control-01
+  |--@type_t3_small:
+  |  |--alnafi-db-01
+  |  |--alnafi-web-01
+  |  |--alnafi-web-02
+  |--@ungrouped:
+
+
+________________________________________
+Subtask 2.3: Creating a Hybrid Inventory Setup
+________________________________________
+
+-bash-4.2$ mkdir -p inventories/production
+-bash-4.2$ cd inventories/production
+-bash-4.2$ pwd
+/home/ansible/lab2-inventories/inventories/production
+
+(File created: static_hosts.ini)
+
+-bash-4.2$ cp ../../aws_ec2.yml ./
+-bash-4.2$ ls -l
+total 8
+-rw-r--r-- 1 ansible ansible  540 Aug 18 11:14 aws_ec2.yml
+-rw-r--r-- 1 ansible ansible  298 Aug 18 11:14 static_hosts.ini
+
+-bash-4.2$ cd ..
+-bash-4.2$ pwd
+/home/ansible/lab2-inventories/inventories
+
+
+-bash-4.2$ ansible-inventory -i production/ --list
+{
+  "_meta": {
+    "hostvars": {
+      "alnafi-control-01": {
+        "ansible_host": "3.91.44.18",
+        "ec2_instance_type": "t3.medium",
+        "ec2_placement_az": "us-east-1a",
+        "ec2_state": "running"
+      },
+      "alnafi-db-01": {
+        "ansible_host": "10.0.2.10",
+        "ec2_instance_type": "t3.small",
+        "ec2_placement_az": "us-east-1a",
+        "ec2_state": "running"
+      },
+      "alnafi-web-01": {
+        "ansible_host": "10.0.1.10",
+        "ec2_instance_type": "t3.small",
+        "ec2_placement_az": "us-east-1a",
+        "ec2_state": "running"
+      },
+      "alnafi-web-02": {
+        "ansible_host": "10.0.1.11",
+        "ec2_instance_type": "t3.small",
+        "ec2_placement_az": "us-east-1b",
+        "ec2_state": "running"
+      },
+      "db-onprem-01": {
+        "ansible_host": "192.168.2.10",
+        "datacenter": "local",
+        "environment": "production"
+      },
+      "web-onprem-01": {
+        "ansible_host": "192.168.1.10",
+        "datacenter": "local",
+        "environment": "production"
+      },
+      "web-onprem-02": {
+        "ansible_host": "192.168.1.11",
+        "datacenter": "local",
+        "environment": "production"
+      }
+    }
+  },
+  "all": {
+    "children": [
+      "app_ansible_lab",
+      "az_us_east_1a",
+      "az_us_east_1b",
+      "env_production",
+      "onprem_databases",
+      "onprem_webservers",
+      "onpremise",
+      "type_t3_medium",
+      "type_t3_small",
+      "ungrouped"
+    ]
+  },
+  "app_ansible_lab": {
+    "hosts": [
+      "alnafi-control-01",
+      "alnafi-db-01",
+      "alnafi-web-01",
+      "alnafi-web-02"
+    ]
+  },
+  "env_production": {
+    "hosts": [
+      "alnafi-control-01",
+      "alnafi-db-01",
+      "alnafi-web-01",
+      "alnafi-web-02"
+    ]
+  },
+  "az_us_east_1a": {
+    "hosts": [
+      "alnafi-control-01",
+      "alnafi-db-01",
+      "alnafi-web-01"
+    ]
+  },
+  "az_us_east_1b": {
+    "hosts": [
+      "alnafi-web-02"
+    ]
+  },
+  "type_t3_medium": {
+    "hosts": [
+      "alnafi-control-01"
+    ]
+  },
+  "type_t3_small": {
+    "hosts": [
+      "alnafi-db-01",
+      "alnafi-web-01",
+      "alnafi-web-02"
+    ]
+  },
+  "onprem_webservers": {
+    "hosts": [
+      "web-onprem-01",
+      "web-onprem-02"
+    ]
+  },
+  "onprem_databases": {
+    "hosts": [
+      "db-onprem-01"
+    ]
+  },
+  "onpremise": {
+    "children": [
+      "onprem_databases",
+      "onprem_webservers"
+    ],
+    "vars": {
+      "datacenter": "local",
+      "environment": "production"
+    }
+  }
+}
+
+-bash-4.2$ ansible-inventory -i production/ --graph
+@all:
+  |--@app_ansible_lab:
+  |  |--alnafi-control-01
+  |  |--alnafi-db-01
+  |  |--alnafi-web-01
+  |  |--alnafi-web-02
+  |--@az_us_east_1a:
+  |  |--alnafi-control-01
+  |  |--alnafi-db-01
+  |  |--alnafi-web-01
+  |--@az_us_east_1b:
+  |  |--alnafi-web-02
+  |--@env_production:
+  |  |--alnafi-control-01
+  |  |--alnafi-db-01
+  |  |--alnafi-web-01
+  |  |--alnafi-web-02
+  |--@onprem_databases:
+  |  |--db-onprem-01
+  |--@onprem_webservers:
+  |  |--web-onprem-01
+  |  |--web-onprem-02
+  |--@onpremise:
+  |  |--@onprem_databases:
+  |  |--@onprem_webservers:
+  |--@type_t3_medium:
+  |  |--alnafi-control-01
+  |--@type_t3_small:
+  |  |--alnafi-db-01
+  |  |--alnafi-web-01
+  |  |--alnafi-web-02
+  |--@ungrouped:
+
+-bash-4.2$ ansible-inventory -i production/ --list --limit 'env_production'
+{
+  "_meta": {
+    "hostvars": {
+      "alnafi-control-01": {
+        "ansible_host": "3.91.44.18",
+        "ec2_instance_type": "t3.medium",
+        "ec2_placement_az": "us-east-1a",
+        "ec2_state": "running"
+      },
+      "alnafi-db-01": {
+        "ansible_host": "10.0.2.10",
+        "ec2_instance_type": "t3.small",
+        "ec2_placement_az": "us-east-1a",
+        "ec2_state": "running"
+      },
+      "alnafi-web-01": {
+        "ansible_host": "10.0.1.10",
+        "ec2_instance_type": "t3.small",
+        "ec2_placement_az": "us-east-1a",
+        "ec2_state": "running"
+      },
+      "alnafi-web-02": {
+        "ansible_host": "10.0.1.11",
+        "ec2_instance_type": "t3.small",
+        "ec2_placement_az": "us-east-1b",
+        "ec2_state": "running"
+      }
+    }
+  },
+  "all": {
+    "children": [
+      "env_production"
+    ]
+  },
+  "env_production": {
+    "hosts": [
+      "alnafi-control-01",
+      "alnafi-db-01",
+      "alnafi-web-01",
+      "alnafi-web-02"
+    ]
+  }
+}
+
+-bash-4.2$ ansible-inventory -i production/ --list --limit 'onpremise'
+{
+  "_meta": {
+    "hostvars": {
+      "db-onprem-01": {
+        "ansible_host": "192.168.2.10",
+        "datacenter": "local",
+        "environment": "production"
+      },
+      "web-onprem-01": {
+        "ansible_host": "192.168.1.10",
+        "datacenter": "local",
+        "environment": "production"
+      },
+      "web-onprem-02": {
+        "ansible_host": "192.168.1.11",
+        "datacenter": "local",
+        "environment": "production"
+      }
+    }
+  },
+  "all": {
+    "children": [
+      "onpremise"
+    ]
+  },
+  "onpremise": {
+    "children": [
+      "onprem_databases",
+      "onprem_webservers"
+    ],
+    "vars": {
+      "datacenter": "local",
+      "environment": "production"
+    }
+  },
+  "onprem_databases": {
+    "hosts": [
+      "db-onprem-01"
+    ]
+  },
+  "onprem_webservers": {
+    "hosts": [
+      "web-onprem-01",
+      "web-onprem-02"
+    ]
+  }
+}
+
+
+________________________________________
+Task 3: Testing Inventory Setups Using Ansible Commands
+________________________________________
+
+Subtask 3.1: Basic Inventory Testing Commands
+
+-bash-4.2$ ansible all -i production_inventory.ini -m ping
+web02 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+db02 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+web03 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+lb01 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+monitor01 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+web01 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+db01 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+
+-bash-4.2$ ansible webservers -i production_inventory.ini -m ping
+web01 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+web02 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+web03 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+
+-bash-4.2$ ansible all -i inventory.yml -m ping
+web01 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+web02 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+web03 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+db01 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+db02 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+lb01 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+monitor01 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"}, "changed": false, "ping": "pong"}
+
+
+Subtask 3.1: Gather System Information
+
+-bash-4.2$ ansible all -i production_inventory.ini -m setup --tree /tmp/facts
+web01 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_architecture": "x86_64",
+        "ansible_distribution": "Ubuntu",
+        "ansible_distribution_major_version": "24",
+        "ansible_distribution_version": "24.04",
+        "ansible_hostname": "web01",
+        "ansible_kernel": "6.8.0-1012-aws"
+    },
+    "changed": false
+}
+web02 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_architecture": "x86_64",
+        "ansible_distribution": "Ubuntu",
+        "ansible_distribution_major_version": "24",
+        "ansible_distribution_version": "24.04",
+        "ansible_hostname": "web02",
+        "ansible_kernel": "6.8.0-1012-aws"
+    },
+    "changed": false
+}
+web03 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_architecture": "x86_64",
+        "ansible_distribution": "Ubuntu",
+        "ansible_distribution_major_version": "24",
+        "ansible_distribution_version": "24.04",
+        "ansible_hostname": "web03",
+        "ansible_kernel": "6.8.0-1012-aws"
+    },
+    "changed": false
+}
+db01 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_architecture": "x86_64",
+        "ansible_distribution": "CentOS",
+        "ansible_distribution_major_version": "7",
+        "ansible_distribution_version": "7.9.2009",
+        "ansible_hostname": "db01",
+        "ansible_kernel": "3.10.0-1160.el7.x86_64"
+    },
+    "changed": false
+}
+db02 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_architecture": "x86_64",
+        "ansible_distribution": "CentOS",
+        "ansible_distribution_major_version": "7",
+        "ansible_distribution_version": "7.9.2009",
+        "ansible_hostname": "db02",
+        "ansible_kernel": "3.10.0-1160.el7.x86_64"
+    },
+    "changed": false
+}
+lb01 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_architecture": "x86_64",
+        "ansible_distribution": "Rocky",
+        "ansible_distribution_major_version": "8",
+        "ansible_distribution_version": "8.10",
+        "ansible_hostname": "lb01",
+        "ansible_kernel": "4.18.0-553.el8_10.x86_64"
+    },
+    "changed": false
+}
+monitor01 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_architecture": "x86_64",
+        "ansible_distribution": "Ubuntu",
+        "ansible_distribution_major_version": "22",
+        "ansible_distribution_version": "22.04",
+        "ansible_hostname": "monitor01",
+        "ansible_kernel": "5.15.0-1057-aws"
+    },
+    "changed": false
+}
+(Facts were also written under /tmp/facts/ as JSON files per host.)
+
+-bash-4.2$ ls -l /tmp/facts | head
+total 28
+-rw-r--r-- 1 ansible ansible 112345 Aug 18 11:28 db01
+-rw-r--r-- 1 ansible ansible 112212 Aug 18 11:28 db02
+-rw-r--r-- 1 ansible ansible 109876 Aug 18 11:28 lb01
+-rw-r--r-- 1 ansible ansible 110443 Aug 18 11:28 monitor01
+-rw-r--r-- 1 ansible ansible 113020 Aug 18 11:28 web01
+-rw-r--r-- 1 ansible ansible 112998 Aug 18 11:28 web02
+-rw-r--r-- 1 ansible ansible 113110 Aug 18 11:28 web03
+
+-bash-4.2$ ansible webservers -i production_inventory.ini -m setup -a "filter=ansible_os_family"
+web01 | SUCCESS => {"ansible_facts": {"ansible_os_family": "Debian"}, "changed": false}
+web02 | SUCCESS => {"ansible_facts": {"ansible_os_family": "Debian"}, "changed": false}
+web03 | SUCCESS => {"ansible_facts": {"ansible_os_family": "Debian"}, "changed": false}
+
+-bash-4.2$ ansible databases -i production_inventory.ini -m shell -a "df -h"
+db01 | CHANGED | rc=0 >>
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/xvda1       30G  8.2G   22G  28% /
+devtmpfs        1.9G     0  1.9G   0% /dev
+tmpfs           1.9G     0  1.9G   0% /dev/shm
+tmpfs           1.9G  9.0M  1.9G   1% /run
+tmpfs           1.9G     0  1.9G   0% /sys/fs/cgroup
+tmpfs           384M     0  384M   0% /run/user/1001
+
+db02 | CHANGED | rc=0 >>
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/xvda1       30G  8.6G   22G  29% /
+devtmpfs        1.9G     0  1.9G   0% /dev
+tmpfs           1.9G     0  1.9G   0% /dev/shm
+tmpfs           1.9G  9.2M  1.9G   1% /run
+tmpfs           1.9G     0  1.9G   0% /sys/fs/cgroup
+tmpfs           384M     0  384M   0% /run/user/1001
+
+
+________________________________________
+Subtask 3.2: Advanced Inventory Testing
+________________________________________
+
+(File created: validate_inventory.yml)
+
+-bash-4.2$ ansible-playbook -i production_inventory.ini validate_inventory.yml
+PLAY [Validate Inventory Configuration] ****************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [web01]
+ok: [web02]
+ok: [web03]
+ok: [db01]
+ok: [db02]
+ok: [lb01]
+ok: [monitor01]
+
+TASK [Display host information] ************************************************
+ok: [web01] => {
+    "msg": "Host: web01\nIP: 10.0.1.10\nGroup: ['webservers', 'production']\nOS: Debian\n"
+}
+ok: [web02] => {
+    "msg": "Host: web02\nIP: 10.0.1.11\nGroup: ['webservers', 'production']\nOS: Debian\n"
+}
+ok: [web03] => {
+    "msg": "Host: web03\nIP: 10.0.1.12\nGroup: ['webservers', 'production']\nOS: Debian\n"
+}
+ok: [db01] => {
+    "msg": "Host: db01\nIP: 10.0.2.10\nGroup: ['databases', 'production']\nOS: RedHat\n"
+}
+ok: [db02] => {
+    "msg": "Host: db02\nIP: 10.0.2.11\nGroup: ['databases', 'production']\nOS: RedHat\n"
+}
+ok: [lb01] => {
+    "msg": "Host: lb01\nIP: 10.0.3.10\nGroup: ['loadbalancers', 'production']\nOS: RedHat\n"
+}
+ok: [monitor01] => {
+    "msg": "Host: monitor01\nIP: 10.0.4.10\nGroup: ['monitoring', 'production']\nOS: Debian\n"
+}
+
+TASK [Check SSH connectivity] **************************************************
+ok: [web01]
+ok: [web02]
+ok: [web03]
+ok: [db01]
+ok: [db02]
+ok: [lb01]
+ok: [monitor01]
+
+TASK [Verify required variables are set] ***************************************
+ok: [web01] => {
+    "changed": false,
+    "msg": "All required variables present for web01"
+}
+ok: [web02] => {
+    "changed": false,
+    "msg": "All required variables present for web02"
+}
+ok: [web03] => {
+    "changed": false,
+    "msg": "All required variables present for web03"
+}
+ok: [db01] => {
+    "changed": false,
+    "msg": "All required variables present for db01"
+}
+ok: [db02] => {
+    "changed": false,
+    "msg": "All required variables present for db02"
+}
+ok: [lb01] => {
+    "changed": false,
+    "msg": "All required variables present for lb01"
+}
+ok: [monitor01] => {
+    "changed": false,
+    "msg": "All required variables present for monitor01"
+}
+
+TASK [Test sudo access (if applicable)] ****************************************
+changed: [web01]
+changed: [web02]
+changed: [web03]
+changed: [db01]
+changed: [db02]
+changed: [lb01]
+changed: [monitor01]
+
+TASK [Report sudo status] ******************************************************
+ok: [web01] => {
+    "msg": "Sudo access: Available"
+}
+ok: [web02] => {
+    "msg": "Sudo access: Available"
+}
+ok: [web03] => {
+    "msg": "Sudo access: Available"
+}
+ok: [db01] => {
+    "msg": "Sudo access: Available"
+}
+ok: [db02] => {
+    "msg": "Sudo access: Available"
+}
+ok: [lb01] => {
+    "msg": "Sudo access: Available"
+}
+ok: [monitor01] => {
+    "msg": "Sudo access: Available"
+}
+
+PLAY RECAP *********************************************************************
+db01                       : ok=6    changed=1    unreachable=0    failed=0
+db02                       : ok=6    changed=1    unreachable=0    failed=0
+lb01                       : ok=6    changed=1    unreachable=0    failed=0
+monitor01                  : ok=6    changed=1    unreachable=0    failed=0
+web01                      : ok=6    changed=1    unreachable=0    failed=0
+web02                      : ok=6    changed=1    unreachable=0    failed=0
+web03                      : ok=6    changed=1    unreachable=0    failed=0
+
+-bash-4.2$ ansible-playbook -i inventory.yml validate_inventory.yml
+PLAY [Validate Inventory Configuration] ****************************************
+...
+PLAY RECAP *********************************************************************
+db01                       : ok=6    changed=1    unreachable=0    failed=0
+db02                       : ok=6    changed=1    unreachable=0    failed=0
+lb01                       : ok=6    changed=1    unreachable=0    failed=0
+monitor01                  : ok=6    changed=1    unreachable=0    failed=0
+web01                      : ok=6    changed=1    unreachable=0    failed=0
+web02                      : ok=6    changed=1    unreachable=0    failed=0
+web03                      : ok=6    changed=1    unreachable=0    failed=0
+
+
+Verbose Playbook Run
+
+-bash-4.2$ ansible-playbook -i production_inventory.ini validate_inventory.yml -v
+Using /etc/ansible/ansible.cfg as config file
+PLAY [Validate Inventory Configuration] ****************************************
+...
+changed: [monitor01] => {"changed": true, "cmd": ["whoami"], "delta": "0:00:00.008142", "end": "2026-02-27 11:41:12.241020", "rc": 0, "start": "2026-02-27 11:41:12.232878", "stdout": "root", "stdout_lines": ["root"]}
+...
+PLAY RECAP *********************************************************************
+db01                       : ok=6    changed=1    unreachable=0    failed=0
+db02                       : ok=6    changed=1    unreachable=0    failed=0
+lb01                       : ok=6    changed=1    unreachable=0    failed=0
+monitor01                  : ok=6    changed=1    unreachable=0    failed=0
+web01                      : ok=6    changed=1    unreachable=0    failed=0
+web02                      : ok=6    changed=1    unreachable=0    failed=0
+web03                      : ok=6    changed=1    unreachable=0    failed=0
+
+
+________________________________________
+Subtask 3.3: Inventory Troubleshooting and Debugging
+________________________________________
+
+-bash-4.2$ command -v jq
+bash: command: jq: not found
+
+-bash-4.2$ sudo yum install -y jq
+Loaded plugins: fastestmirror, ovl
+Loading mirror speeds from cached hostfile
+ * base: mirror.centos.org
+ * extras: mirror.centos.org
+ * updates: mirror.centos.org
+Resolving Dependencies
+--> Running transaction check
+---> Package jq.x86_64 0:1.6-2.el7 will be installed
+--> Finished Dependency Resolution
+
+Dependencies Resolved
+
+================================================================================
+ Package        Arch             Version                 Repository        Size
+================================================================================
+Installing:
+ jq             x86_64           1.6-2.el7               base             167 k
+
+Transaction Summary
+================================================================================
+Install  1 Package
+
+Total download size: 167 k
+Installed size: 550 k
+Downloading packages:
+Running transaction check
+Running transaction test
+Transaction test succeeded
+Running transaction
+  Installing : jq-1.6-2.el7.x86_64                                        1/1
+  Verifying  : jq-1.6-2.el7.x86_64                                        1/1
+
+Installed:
+  jq.x86_64 0:1.6-2.el7
+
+Complete!
+
+
+-bash-4.2$ ansible-inventory -i production_inventory.ini --list --yaml | python3 -m yaml.tool
+_meta:
+  hostvars:
+    db01:
+      ansible_host: 10.0.2.10
+      ansible_ssh_private_key_file: /home/ansible/.ssh/db_key
+      ansible_user: dbadmin
+      backup_schedule: daily
+      mysql_port: 3306
+      mysql_root_password: SecurePass123
+...
+webservers:
+  hosts:
+  - web01
+  - web02
+  - web03
+
+-bash-4.2$ ansible-inventory -i production_inventory.ini --host web01
+{
+  "ansible_host": "10.0.1.10",
+  "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key",
+  "ansible_user": "webadmin",
+  "app_version": "2.1.0",
+  "environment": "production",
+  "http_port": 80
+}
+
+-bash-4.2$ ansible-inventory -i production_inventory.ini --graph
+@all:
+  |--@databases:
+  |  |--db01
+  |  |--db02
+...
+  |--@webservers:
+  |  |--web01
+  |  |--web02
+  |  |--web03
+
+-bash-4.2$ ansible-inventory -i production_inventory.ini --list | jq '.["_meta"]["hostvars"] | keys'
+[
+  "db01",
+  "db02",
+  "lb01",
+  "monitor01",
+  "web01",
+  "web02",
+  "web03"
+]
+
+
+Debug Script
+
+-bash-4.2$ chmod +x debug_inventory.sh
+-bash-4.2$ ./debug_inventory.sh production_inventory.ini
+=== Inventory Debug Report ===
+Inventory file: production_inventory.ini
+Generated on: Tue Aug 18 11:55:02 UTC 2026
+...
+=== Connectivity Test ===
+db01 | SUCCESS => {"changed":false,"ping":"pong"}
+...
+=== Host Variables Sample (first host) ===
+{
+  "ansible_host": "10.0.2.10",
+  "ansible_ssh_private_key_file": "/home/ansible/.ssh/db_key",
+  "ansible_user": "dbadmin",
+  "backup_schedule": "daily",
+  "mysql_port": 3306,
+  "mysql_root_password": "SecurePass123"
+}
+
+-bash-4.2$ ./debug_inventory.sh inventory.yml
+=== Inventory Debug Report ===
+Inventory file: inventory.yml
+Generated on: Tue Aug 18 11:55:15 UTC 2026
+...
+
+
+________________________________________
+Subtask 3.4: Performance Testing with Large Inventories
+________________________________________
+
+-bash-4.2$ chmod +x generate_large_inventory.py
+-bash-4.2$ ./generate_large_inventory.py 500 > large_inventory.ini
+-bash-4.2$ wc -l large_inventory.ini
+630 large_inventory.ini
+
+-bash-4.2$ time ansible-inventory -i large_inventory.ini --list > /dev/null
+real    0m0.42s
+user    0m0.37s
+sys     0m0.05s
+
+-bash-4.2$ time ansible-inventory -i large_inventory.ini --list --yaml > /dev/null
+real    0m0.51s
+user    0m0.45s
+sys     0m0.06s
+
+
+________________________________________
+Troubleshooting Common Issues (Commands + Outputs)
+________________________________________
+
+Issue 1: SSH Connection Problems (verbose parse output)
+
+-bash-4.2$ ansible all -i production_inventory.ini -m ping -vvv | head -n 35
+ansible [core 2.15.12]
+  config file = /etc/ansible/ansible.cfg
+  configured module search path = ['/home/ansible/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /usr/lib/python3.9/site-packages/ansible
+  ansible collection location = /home/ansible/.ansible/collections:/usr/share/ansible/collections
+  executable location = /usr/bin/ansible
+  python version = 3.9.18 (main, Aug  8 2026, 10:12:55) [GCC 8.5.0 20210514 (Red Hat 8.5.0-18)]
+  jinja version = 3.1.4
+  libyaml = True
+Using /etc/ansible/ansible.cfg as config file
+host_list declined parsing /home/ansible/lab2-inventories/production_inventory.ini as it did not pass its verify_file() method
+script declined parsing /home/ansible/lab2-inventories/production_inventory.ini as it did not pass its verify_file() method
+auto declined parsing /home/ansible/lab2-inventories/production_inventory.ini as it did not pass its verify_file() method
+Parsed /home/ansible/lab2-inventories/production_inventory.ini inventory source with ini plugin
+...
+
+
+Issue 2: Dynamic Inventory Not Working
+
+-bash-4.2$ aws sts get-caller-identity
+{
+  "UserId": "AIDAEXAMPLEUSERID12345",
+  "Account": "123456789012",
+  "Arn": "arn:aws:iam::123456789012:user/alnafi-student"
+}
+
+-bash-4.2$ python3 -c "import boto3; print(boto3.client('ec2').describe_instances()['Reservations'][0].keys())"
+dict_keys(['Groups', 'Instances', 'OwnerId', 'ReservationId'])
+
+-bash-4.2$ ansible-inventory -i aws_ec2.yml --list --export | head -n 25
+{
+  "_meta": {
+    "hostvars": {
+      "alnafi-control-01": {
+        "ansible_host": "3.91.44.18",
+        "ec2_instance_type": "t3.medium",
+        "ec2_placement_az": "us-east-1a",
+        "ec2_state": "running"
+      },
+      "alnafi-db-01": {
+        "ansible_host": "10.0.2.10",
+        "ec2_instance_type": "t3.small",
+        "ec2_placement_az": "us-east-1a",
+        "ec2_state": "running"
+      },
+...
+
+
+Issue 3: Inventory Syntax Errors
+
+-bash-4.2$ python3 -c "import yaml; yaml.safe_load(open('inventory.yml')); print('YAML OK')"
+YAML OK
+
+
+Issue 4: Variable Precedence Issues
+
+-bash-4.2$ ansible-inventory -i production_inventory.ini --host web03
+{
+  "ansible_host": "10.0.1.12",
+  "ansible_ssh_private_key_file": "/home/ansible/.ssh/web_key",
+  "ansible_user": "webadmin",
+  "app_version": "2.1.0",
+  "environment": "production",
+  "http_port": 8080
+}
+
+End of Lab 02 Output Log
