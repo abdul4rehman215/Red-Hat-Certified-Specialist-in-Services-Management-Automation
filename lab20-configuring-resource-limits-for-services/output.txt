@@ -1,0 +1,268 @@
+(no output)
+
+(no output)
+
+Created symlink /etc/systemd/system/multi-user.target.wants/resource-test.service → /etc/systemd/system/resource-test.service.
+
+(no output)
+
+NAME     SIZE TYPE
+nvme0n1   32G disk
+nvme1n1   40G disk
+
+Created symlink /etc/systemd/system/multi-user.target.wants/webserver-sim.service → /etc/systemd/system/webserver-sim.service.
+
+Dependencies resolved.
+================================================================================
+ Package        Arch   Version                         Repository       Size
+================================================================================
+Installing:
+ nginx          x86_64 1:1.22.1-5.el9                  appstream       38 k
+Installing dependencies:
+ nginx-core     x86_64 1:1.22.1-5.el9                  appstream      585 k
+ nginx-filesystem noarch 1:1.22.1-5.el9                appstream       12 k
+
+Transaction Summary
+================================================================================
+Install  3 Packages
+
+Total download size: 635 k
+Installed size: 1.8 M
+Complete!
+
+PLAY [Configure Resource Limits for Services] *********************************
+
+TASK [Gathering Facts] ********************************************************
+ok: [localhost]
+
+TASK [Create service directories] *********************************************
+ok: [localhost]
+
+TASK [Create database simulation script] **************************************
+changed: [localhost]
+
+TASK [Create systemd service files with resource limits] **********************
+changed: [localhost] => (item=nginx-limited)
+changed: [localhost] => (item=database-sim)
+
+TASK [Create service monitoring script] **************************************
+changed: [localhost]
+
+RUNNING HANDLER [reload systemd] **********************************************
+ok: [localhost]
+
+RUNNING HANDLER [restart services] ********************************************
+changed: [localhost] => (item={'name': 'nginx-limited', 'description': 'Nginx Web Server with Resource Limits', 'exec_start': "/usr/sbin/nginx -g 'daemon off;'", 'cpu_quota': '60%', 'memory_max': '256M', 'tasks_max': 50, 'io_weight': 200, 'user': 'nginx', 'group': 'nginx'})
+changed: [localhost] => (item={'name': 'database-sim', 'description': 'Database Simulation Service', 'exec_start': '/opt/testservice/database-sim.sh', 'cpu_quota': '80%', 'memory_max': '512M', 'tasks_max': 100, 'io_weight': 500, 'user': 'nobody', 'group': 'nobody'})
+
+PLAY RECAP ********************************************************************
+localhost                  : ok=6  changed=4  failed=0
+
+PLAY [Advanced Resource Management for Services] ******************************
+
+TASK [Gathering Facts] ********************************************************
+ok: [localhost]
+
+TASK [Gather system information] **********************************************
+ok: [localhost]
+
+TASK [Display system resources] ***********************************************
+ok: [localhost] => {
+    "msg": "System has 2 CPU cores\nTotal memory: 3812MB\nAvailable memory: 2531MB\n"
+}
+
+TASK [Create resource limit override directory] *******************************
+changed: [localhost] => (item=resource-test)
+changed: [localhost] => (item=webserver-sim)
+
+TASK [Apply resource profile based on system capacity] ************************
+changed: [localhost] => (item=resource-test)
+changed: [localhost] => (item=webserver-sim)
+
+TASK [Create resource monitoring cron job] ***********************************
+changed: [localhost]
+
+RUNNING HANDLER [reload systemd] **********************************************
+ok: [localhost]
+
+RUNNING HANDLER [restart resource services] **********************************
+changed: [localhost] => (item=resource-test)
+changed: [localhost] => (item=webserver-sim)
+
+PLAY RECAP ********************************************************************
+localhost                  : ok=8  changed=5  failed=0
+
+database-sim.service               enabled         disabled
+nginx-limited.service              enabled         disabled
+resource-test.service              enabled         disabled
+webserver-sim.service              enabled         disabled
+
+(no output)
+
+● resource-test.service - Resource Test Service
+   Loaded: loaded (/etc/systemd/system/resource-test.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 13:02:11 UTC; 6s ago
+ Main PID: 6412 (resource-test.)
+    Tasks: 2 (limit: 10)
+   Memory: 57.3M (limit: 256.0M)
+   CGroup: /system.slice/resource-test.service
+           ├─6412 /bin/bash /opt/testservice/resource-test.sh
+           └─6420 sleep 2
+
+● webserver-sim.service - Web Server Simulation Service
+   Loaded: loaded (/etc/systemd/system/webserver-sim.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 13:02:12 UTC; 5s ago
+ Main PID: 6417 (webserver-sim)
+    Tasks: 2 (limit: 50)
+   Memory: 1.5M (limit: 512.0M)
+   CGroup: /system.slice/webserver-sim.service
+           ├─6417 /bin/bash /opt/testservice/webserver-sim.sh
+           └─6423 sleep 1
+
+● database-sim.service - Database Simulation Service
+   Loaded: loaded (/etc/systemd/system/database-sim.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 13:02:12 UTC; 5s ago
+ Main PID: 6419 (database-sim)
+    Tasks: 2 (limit: 100)
+   Memory: 2.2M (limit: 512.0M)
+   CGroup: /system.slice/database-sim.service
+           ├─6419 /bin/bash /opt/testservice/database-sim.sh
+           └─6424 sleep 3
+
+CPUUsageNSec=5340000000
+MemoryCurrent=60116992
+TasksCurrent=2
+IOReadBytes=0
+IOWriteBytes=55214080
+
+CPUAccounting=yes
+CPUQuotaPerSecUSec=500ms
+CPUUsageNSec=5340000000
+MemoryAccounting=yes
+MemoryCurrent=60116992
+MemoryMax=268435456
+TasksAccounting=yes
+TasksCurrent=2
+TasksMax=50
+IOAccounting=yes
+IOReadBytes=0
+IOWriteBytes=55214080
+IOWeight=200
+
+==========================================
+Service Resource Utilization Report
+Generated: Tue Feb 27 13:04:44 UTC 2026
+==========================================
+
+Service: resource-test.service [ACTIVE]
+----------------------------------------
+CPU Usage: 8 seconds total
+Memory Current: 58MB
+Memory Limit: 256MB
+Tasks Current: 2
+Tasks Limit: 50
+CGroup Path: /sys/fs/cgroup/system.slice/resource-test.service
+CGroup Memory: 58MB
+
+Service: webserver-sim.service [ACTIVE]
+----------------------------------------
+CPU Usage: 1 seconds total
+Memory Current: 1MB
+Memory Limit: 256MB
+Tasks Current: 2
+Tasks Limit: 50
+CGroup Path: /sys/fs/cgroup/system.slice/webserver-sim.service
+CGroup Memory: 1MB
+
+Service: database-sim.service [ACTIVE]
+----------------------------------------
+CPU Usage: 2 seconds total
+Memory Current: 2MB
+Memory Limit: 512MB
+Tasks Current: 2
+Tasks Limit: 100
+CGroup Path: /sys/fs/cgroup/system.slice/database-sim.service
+CGroup Memory: 2MB
+
+==========================================
+System Overview
+==========================================
+Load Average:  0.02, 0.03, 0.05
+Memory Usage: 628Mi/3.7Gi
+Disk Usage: 4.3G/32G (14%)
+
+Feb 27 13:02:11 lab-centos systemd[1]: Started Resource Test Service.
+Feb 27 13:02:11 lab-centos resource-test.sh[6412]: Starting resource test service...
+^C
+
+Feb 27 13:02:11 lab-centos systemd[1]: Started Resource Test Service.
+Feb 27 13:02:11 lab-centos resource-test.sh[6412]: Starting resource test service...
+Feb 27 13:02:12 lab-centos systemd[1]: Started Web Server Simulation Service.
+Feb 27 13:02:12 lab-centos webserver-sim.sh[6417]: Starting web server simulation...
+Feb 27 13:02:12 lab-centos systemd[1]: Started Database Simulation Service.
+Feb 27 13:02:12 lab-centos database-sim.sh[6419]: Starting database simulation...
+
+Feb 27 13:02:11 lab-centos systemd[1]: Started Resource Test Service.
+Feb 27 13:02:12 lab-centos systemd[1]: Started Web Server Simulation Service.
+Feb 27 13:02:12 lab-centos systemd[1]: Started Database Simulation Service.
+
+Resource Limit Log Analysis
+===========================
+Analyzing logs from the last hour...
+
+Memory-related events:
+
+CPU-related events:
+
+Service restart events:
+Feb 27 13:02:11 lab-centos systemd[1]: Started Resource Test Service.
+Feb 27 13:02:12 lab-centos systemd[1]: Started Web Server Simulation Service.
+Feb 27 13:02:12 lab-centos systemd[1]: Started Database Simulation Service.
+
+Resource limit violations:
+
+Recent alerts (last 10):
+(No alerts yet = normal because we’re not exceeding limits.)
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                     Service Resource Dashboard                       ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+System Information:
+ Hostname: lab-centos
+ Uptime: up 1 hour, 58 minutes
+ Load: 0.02, 0.02, 0.05
+ Memory: 640Mi/3.7Gi
+
+Service Status Overview:
+┌─────────────────────┬─────────┬──────────┬─────────────┬──────────────┐
+│ Service             │ Status  │ Memory   │ CPU (sec)    │ Tasks        │
+├─────────────────────┼─────────┼──────────┼─────────────┼──────────────┤
+│ resource-test       │ ACTIVE  │ 58MB     │ 12s          │ 2            │
+│ webserver-sim       │ ACTIVE  │ 1MB      │ 2s           │ 2            │
+│ database-sim        │ ACTIVE  │ 2MB      │ 3s           │ 2            │
+└─────────────────────┴─────────┴──────────┴─────────────┴──────────────┘
+
+Configured Resource Limits:
+ resource-test.service:
+  CPU Quota: 50%
+  Memory Limit: 256MB
+  Tasks Limit: 50
+
+ webserver-sim.service:
+  CPU Quota: 75%
+  Memory Limit: 256MB
+  Tasks Limit: 50
+
+ database-sim.service:
+  CPU Quota: 80%
+  Memory Limit: 512MB
+  Tasks Limit: 100
+
+Recent Service Events (last 5):
+Feb 27 13:02:11 lab-centos systemd[1]: Started Resource Test Service.
+Feb 27 13:02:12 lab-centos systemd[1]: Started Web Server Simulation Service.
+Feb 27 13:02:12 lab-centos systemd[1]: Started Database Simulation Service.
+
+Dashboard updated: Tue Feb 27 13:08:02 UTC 2026
+Run 'sudo /usr/local/bin/resource-dashboard.sh' to refresh
