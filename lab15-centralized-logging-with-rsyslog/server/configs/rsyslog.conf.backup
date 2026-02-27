@@ -1,0 +1,4 @@
+# /etc/rsyslog.conf.backup (server)
+# Backup created before modifying rsyslog for remote reception.
+# Original file preserved on the lab VM at:
+#   /etc/rsyslog.conf.backup
