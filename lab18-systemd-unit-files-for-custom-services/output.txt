@@ -1,0 +1,421 @@
+# /usr/lib/systemd/system/sshd.service
+[Unit]
+Description=OpenSSH server daemon
+Documentation=man:sshd(8) man:sshd_config(5)
+After=network.target auditd.service
+Wants=network.target
+ConditionPathExists=!/etc/ssh/sshd_not_to_be_run
+
+[Service]
+Type=notify
+EnvironmentFile=-/etc/sysconfig/sshd
+ExecStart=/usr/sbin/sshd -D $OPTIONS
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartSec=42s
+
+[Install]
+WantedBy=multi-user.target
+
+UnitPath=/etc/systemd/system /run/systemd/system /usr/lib/systemd/system
+
+(no output)
+
+total 0
+drwxr-xr-x  4 centos centos  37 Feb 27 11:20 .
+drwx------ 12 centos centos 247 Feb 27 11:20 ..
+drwxr-xr-x  2 centos centos   6 Feb 27 11:20 scripts
+drwxr-xr-x  2 centos centos   6 Feb 27 11:20 unit-files
+
+(no output)
+
+[1] 3321
+Test webserver PID: 3321
+Starting web server on port 8080
+Serving directory: /tmp/webserver
+
+<html>
+<body>
+<h1>Welcome to Custom Web Server</h1>
+<p>This is a custom systemd service!</p>
+<p><a href="/status">Check Status</a></p>
+</body>
+</html>
+
+            <html>
+            <body>
+            <h1>Custom Web Server Status</h1>
+            <p>Server is running on port 8080</p>
+            <p>Current time: 2026-02-27 11:23:51.947173</p>
+            <p>PID: 3321</p>
+            </body>
+            </html>
+
+Received signal 15, shutting down gracefully...
+[1]+  Exit 0                  python3 scripts/simple-webserver.py
+
+(no output)
+
+(no output)
+
+(no output)
+
+ls: cannot access '/etc/systemd/system/systemcleanup.*': No such file or directory
+-rw-r--r-- 1 root root  599 Feb 27 11:30 /etc/systemd/system/custom-webserver.service
+-rw-r--r-- 1 root root  505 Feb 27 11:30 /etc/systemd/system/log-monitor.service
+
+-rw-r--r-- 1 root root  599 Feb 27 11:30 /etc/systemd/system/custom-webserver.service
+-rw-r--r-- 1 root root  505 Feb 27 11:30 /etc/systemd/system/log-monitor.service
+-rw-r--r-- 1 root root  389 Feb 27 11:30 /etc/systemd/system/system-cleanup.service
+-rw-r--r-- 1 root root  252 Feb 27 11:30 /etc/systemd/system/system-cleanup.timer
+
+custom-webserver.service          disabled        disabled
+log-monitor.service               disabled        disabled
+system-cleanup.service            static          -
+system-cleanup.timer              disabled        disabled
+
+Created symlink /etc/systemd/system/multi-user.target.wants/custom-webserver.service → /etc/systemd/system/custom-webserver.service.
+
+(no output)
+
+● custom-webserver.service - Custom Python Web Server
+   Loaded: loaded (/etc/systemd/system/custom-webserver.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 11:32:18 UTC; 5s ago
+     Docs: https://docs.python.org/3/library/http.server.html
+ Main PID: 3612 (python3)
+    Tasks: 1 (limit: 23000)
+   Memory: 13.0M
+   CGroup: /system.slice/custom-webserver.service
+           └─3612 /usr/bin/python3 /home/centos/systemd-lab/scripts/simple-webserver.py
+
+Feb 27 11:32:18 lab-centos systemd[1]: Started Custom Python Web Server.
+Feb 27 11:32:18 lab-centos python3[3612]: Starting web server on port 8080
+Feb 27 11:32:18 lab-centos python3[3612]: Serving directory: /tmp/webserver
+
+active
+enabled
+
+Created symlink /etc/systemd/system/multi-user.target.wants/log-monitor.service → /etc/systemd/system/log-monitor.service.
+
+(no output)
+
+● log-monitor.service - Custom Log Monitor Service
+   Loaded: loaded (/etc/systemd/system/log-monitor.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 11:33:10 UTC; 6s ago
+     Docs: man:systemd.service(5)
+ Main PID: 3720 (log-monitor.sh)
+    Tasks: 2 (limit: 23000)
+   Memory: 1.5M
+   CGroup: /system.slice/log-monitor.service
+           ├─3720 /bin/bash /home/centos/systemd-lab/scripts/log-monitor.sh
+           └─3732 sleep 30
+
+Feb 27 11:33:10 lab-centos systemd[1]: Started Custom Log Monitor Service.
+
+Feb 27 11:33:10 lab-centos log-monitor[3720]: 2026-02-27 11:33:10 - Log monitor service starting...
+Feb 27 11:33:10 lab-centos log-monitor[3720]: 2026-02-27 11:33:10 - Monitoring directory: /tmp/monitor
+Feb 27 11:33:10 lab-centos log-monitor[3720]: 2026-02-27 11:33:10 - PID: 3720
+Feb 27 11:33:10 lab-centos log-monitor[3720]: 2026-02-27 11:33:10 - Files in monitor directory: 0
+Feb 27 11:33:10 lab-centos log-monitor[3720]: 2026-02-27 11:33:10 - System load average: 0.02
+^C
+
+(no output)
+
+● log-monitor.service - Custom Log Monitor Service
+   Loaded: loaded (/etc/systemd/system/log-monitor.service; enabled; vendor preset: disabled)
+   Active: inactive (dead) since Tue 2026-02-27 11:34:02 UTC; 2s ago
+     Docs: man:systemd.service(5)
+
+Feb 27 11:34:02 lab-centos systemd[1]: Stopped Custom Log Monitor Service.
+
+(no output)
+
+(no output)
+
+Created symlink /etc/systemd/system/timers.target.wants/system-cleanup.timer → /etc/systemd/system/system-cleanup.timer.
+
+(no output)
+
+● system-cleanup.timer - Run System Cleanup Every 15 Minutes
+   Loaded: loaded (/etc/systemd/system/system-cleanup.timer; enabled; vendor preset: disabled)
+   Active: active (waiting) since Tue 2026-02-27 11:34:45 UTC; 3s ago
+     Docs: Timer for system-cleanup.service
+
+Trigger: Tue 2026-02-27 11:39:45 UTC; 4min 57s left
+Triggers: ● system-cleanup.service
+
+NEXT                        LEFT          LAST                        PASSED       UNIT                         ACTIVATES
+Tue 2026-02-27 11:39:45 UTC 4min 52s      Tue 2026-02-27 11:34:45 UTC 6s ago       system-cleanup.timer          system-cleanup.service
+Tue 2026-02-27 12:00:00 UTC 25min         Tue 2026-02-27 11:00:00 UTC 34min ago    dnf-makecache.timer           dnf-makecache.service
+...
+
+PASSSED: 0 timers omitted.
+
+(no output)
+
+● system-cleanup.service - System Cleanup Task
+   Loaded: loaded (/etc/systemd/system/system-cleanup.service; static; vendor preset: disabled)
+   Active: inactive (dead) since Tue 2026-02-27 11:35:13 UTC; 1s ago
+     Docs: Custom cleanup service for temporary files
+  Process: 4010 ExecStart=/home/centos/systemd-lab/scripts/system-cleanup.sh (code=exited, status=0/SUCCESS)
+ Main PID: 4010 (code=exited, status=0/SUCCESS)
+
+Feb 27 11:35:13 lab-centos systemd[1]: Started System Cleanup Task.
+Feb 27 11:35:13 lab-centos systemd[1]: system-cleanup.service: Succeeded.
+
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Starting system cleanup task...
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Removed old file: /tmp/cleanup-test/old_file_1.tmp
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Removed old file: /tmp/cleanup-test/old_file_2.tmp
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Removed old file: /tmp/old-files/old_file_1.tmp
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Removed old file: /tmp/old-files/old_file_2.tmp
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Current disk usage: 13%
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Current memory usage: 22.6%
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: System cleanup task completed successfully
+
+<html>
+<body>
+<h1>Welcome to Custom Web Server</h1>
+<p>This is a custom systemd service!</p>
+
+            <html>
+            <body>
+            <h1>Custom Web Server Status</h1>
+            <p>Server is running on port 8080</p>
+            <p>Current time: 2026-02-27 11:36:44.201833</p>
+            <p>PID: 3612</p>
+            </body>
+            </html>
+
+            <html>
+            <body>
+            <h1>Custom Web Server Status</h1>
+            <p>Server is running on port 8080</p>
+            <p>Current time: 2026-02-27 11:36:47.718902</p>
+            <p>PID: 3612</p>
+            </body>
+            </html>
+
+tcp6       0      0 :::8080                 :::*                    LISTEN      3612/python3
+LISTEN 0      5          0.0.0.0:8080      0.0.0.0:*    users:(("python3",pid=3612,fd=3))
+
+Web server PID: 3612
+
+(no output)
+
+● custom-webserver.service - Custom Python Web Server
+   Loaded: loaded (/etc/systemd/system/custom-webserver.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 11:37:28 UTC; 2s ago
+     Docs: https://docs.python.org/3/library/http.server.html
+ Main PID: 4188 (python3)
+    Tasks: 1 (limit: 23000)
+   Memory: 12.4M
+   CGroup: /system.slice/custom-webserver.service
+           └─4188 /usr/bin/python3 /home/centos/systemd-lab/scripts/simple-webserver.py
+
+Feb 27 11:37:27 lab-centos systemd[1]: custom-webserver.service: Main process exited, code=killed, status=9/KILL
+Feb 27 11:37:27 lab-centos systemd[1]: custom-webserver.service: Failed with result 'signal'.
+Feb 27 11:37:28 lab-centos systemd[1]: Started Custom Python Web Server.
+Feb 27 11:37:28 lab-centos python3[4188]: Starting web server on port 8080
+Feb 27 11:37:28 lab-centos python3[4188]: Serving directory: /tmp/webserver
+
+            <html>
+            <body>
+            <h1>Custom Web Server Status</h1>
+            <p>Server is running on port 8080</p>
+            <p>Current time: 2026-02-27 11:37:34.004221</p>
+            <p>PID: 4188</p>
+            </body>
+            </html>
+
+[1] 4249
+tail PID: 4249
+2026-02-27 11:37:10 - Log monitor service starting...
+2026-02-27 11:37:10 - Monitoring directory: /tmp/monitor
+2026-02-27 11:37:10 - PID: 4216
+2026-02-27 11:37:10 - Files in monitor directory: 0
+2026-02-27 11:37:10 - System load average: 0.01
+
+(no output)
+
+2026-02-27 11:37:40 - Files in monitor directory: 2
+2026-02-27 11:37:40 - System load average: 0.00
+
+[1]+  Terminated              sudo tail -f /var/log/custom-monitor.log
+
+2026-02-27 11:37:10 - Log monitor service starting...
+2026-02-27 11:37:10 - Monitoring directory: /tmp/monitor
+2026-02-27 11:37:10 - PID: 4216
+2026-02-27 11:37:10 - Files in monitor directory: 0
+2026-02-27 11:37:10 - System load average: 0.01
+2026-02-27 11:37:40 - Files in monitor directory: 2
+2026-02-27 11:37:40 - System load average: 0.00
+2026-02-27 11:38:10 - Files in monitor directory: 2
+2026-02-27 11:38:10 - System load average: 0.02
+
+(no output)
+
+● log-monitor.service - Custom Log Monitor Service
+   Loaded: loaded (/etc/systemd/system/log-monitor.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 11:38:24 UTC; 2s ago
+ Main PID: 4377 (log-monitor.sh)
+    Tasks: 2 (limit: 23000)
+   Memory: 1.4M
+   CGroup: /system.slice/log-monitor.service
+           ├─4377 /bin/bash /home/centos/systemd-lab/scripts/log-monitor.sh
+           └─4389 sleep 30
+
+2026-02-27 11:38:24 - Log monitor service starting...
+2026-02-27 11:38:24 - Monitoring directory: /tmp/monitor
+2026-02-27 11:38:24 - PID: 4377
+2026-02-27 11:38:24 - Files in monitor directory: 2
+2026-02-27 11:38:24 - System load average: 0.01
+
+NEXT                        LEFT          LAST                        PASSED      UNIT                   ACTIVATES
+Tue 2026-02-27 11:39:45 UTC 1min 03s      Tue 2026-02-27 11:34:45 UTC 4min ago    system-cleanup.timer    system-cleanup.service
+
+Id=system-cleanup.timer
+Names=system-cleanup.timer
+Unit=system-cleanup.timer
+Description=Run System Cleanup Every 15 Minutes
+LoadState=loaded
+ActiveState=active
+SubState=waiting
+UnitFileState=enabled
+Triggers=system-cleanup.service
+NextElapseUSecRealtime=Tue 2026-02-27 11:39:45 UTC
+LastTriggerUSecRealtime=Tue 2026-02-27 11:34:45 UTC
+
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Starting system cleanup task...
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Removed old file: /tmp/cleanup-test/old_file_1.tmp
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Removed old file: /tmp/cleanup-test/old_file_2.tmp
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Removed old file: /tmp/old-files/old_file_1.tmp
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Removed old file: /tmp/old-files/old_file_2.tmp
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Current disk usage: 13%
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: Current memory usage: 22.6%
+Feb 27 11:35:13 lab-centos system-cleanup[4010]: 2026-02-27 11:35:13 - CLEANUP: System cleanup task completed successfully
+
+(no output)
+
+● system-cleanup.service - System Cleanup Task
+   Loaded: loaded (/etc/systemd/system/system-cleanup.service; static; vendor preset: disabled)
+   Active: inactive (dead) since Tue 2026-02-27 11:39:01 UTC; 1s ago
+  Process: 4662 ExecStart=/home/centos/systemd-lab/scripts/system-cleanup.sh (code=exited, status=0/SUCCESS)
+
+Feb 27 11:39:01 lab-centos systemd[1]: Started System Cleanup Task.
+Feb 27 11:39:01 lab-centos systemd[1]: system-cleanup.service: Succeeded.
+
+2026-02-27 11:35:13 - CLEANUP: Current disk usage: 13%
+2026-02-27 11:35:13 - CLEANUP: Current memory usage: 22.6%
+2026-02-27 11:35:13 - CLEANUP: System cleanup task completed successfully
+2026-02-27 11:39:01 - CLEANUP: Starting system cleanup task...
+2026-02-27 11:39:01 - CLEANUP: Removed old file: /tmp/cleanup-test/old_file_1.tmp
+2026-02-27 11:39:01 - CLEANUP: Removed old file: /tmp/cleanup-test/old_file_2.tmp
+2026-02-27 11:39:01 - CLEANUP: Removed old file: /tmp/old-files/old_file_1.tmp
+2026-02-27 11:39:01 - CLEANUP: Removed old file: /tmp/old-files/old_file_2.tmp
+2026-02-27 11:39:01 - CLEANUP: Current disk usage: 13%
+2026-02-27 11:39:01 - CLEANUP: System cleanup task completed successfully
+
+enabled
+enabled
+enabled
+custom-webserver.service          enabled         disabled
+log-monitor.service               enabled         disabled
+system-cleanup.timer              enabled         disabled
+
+(no output)
+
+inactive
+inactive
+inactive
+
+(no output)
+
+active
+active
+active
+
+custom-webserver.service
+● ├─network.target
+● └─system.slice
+
+log-monitor.service
+● ├─multi-user.target
+● └─system.slice
+
+system-cleanup.timer
+● ├─system-cleanup.service
+● ├─timers.target
+● └─system.slice
+
+custom-webserver.service
+● └─multi-user.target
+
+MainPID=4821
+MainPID=4860
+
+Web server resource usage:
+  PID  PPID CMD                                           %MEM %CPU
+ 4821     1 /usr/bin/python3 /home/centos/systemd-lab/...  0.6  0.1
+
+Log monitor resource usage:
+  PID  PPID CMD                              %MEM %CPU
+ 4860     1 /bin/bash /home/centos/system... 0.1  0.0
+
+=== Custom Services Test Report ===
+Generated on: Tue Feb 27 11:46:02 UTC 2026
+
+1. Testing Custom Web Server:
+ ✓ Service is active
+ ✓ Web server is responding
+
+2. Testing Log Monitor:
+ ✓ Service is active
+ ✓ Log file exists
+ Last log entry: 2026-02-27 11:45:54 - System load average: 0.01
+
+3. Testing Cleanup Timer:
+ ✓ Timer is active
+ Next run: 2026-02-27 11:49:45
+
+4. Boot Startup Status:
+ Web Server: enabled
+ Log Monitor: enabled
+ Cleanup Timer: enabled
+
+=== Test Complete ===
+
+Testing service failure and recovery...
+Killing web server process 4821
+Waiting for restart...
+✓ Web server restarted successfully
+
+Testing configuration reload...
+● custom-webserver.service - Custom Python Web Server
+   Loaded: loaded (/etc/systemd/system/custom-webserver.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 11:47:12 UTC; 2s ago
+ Main PID: 5127 (python3)
+    Tasks: 1 (limit: 23000)
+   Memory: 12.6M
+   CGroup: /system.slice/custom-webserver.service
+           └─5127 /usr/bin/python3 /home/centos/systemd-lab/scripts/simple-webserver.py
+
+Feb 27 11:47:12 lab-centos systemd[1]: Started Custom Python Web Server.
+Feb 27 11:47:12 lab-centos python3[5127]: Starting web server on port 8080
+Feb 27 11:47:12 lab-centos python3[5127]: Serving directory: /tmp/webserver
+
+(no output)
+
+Removed "/etc/systemd/system/multi-user.target.wants/custom-webserver.service".
+Removed "/etc/systemd/system/multi-user.target.wants/log-monitor.service".
+Removed "/etc/systemd/system/timers.target.wants/system-cleanup.timer".
+
+(no output)
+
+(no output)
+
+(no output)
+
+(no output)
+
+(no output)
