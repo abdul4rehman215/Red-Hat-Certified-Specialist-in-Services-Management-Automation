@@ -1,0 +1,133 @@
+---
+- name: Schedule Automated MariaDB Backups
+  hosts: database_servers
+  become: yes
+  vars:
+    backup_script_path: "/usr/local/bin/mariadb-backup.sh"
+
+  tasks:
+    - name: Create backup script
+      copy:
+        content: |
+          #!/bin/bash
+          # Automated MariaDB Backup Script
+
+          BACKUP_DIR="/opt/mariadb-backups"
+          DATE=$(date +%Y-%m-%d)
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          DATABASES=("company_db" "inventory_db" "users_db")
+          RETENTION_DAYS=7
+
+          # Create backup directory
+          mkdir -p "$BACKUP_DIR/$DATE"
+
+          # Function to log messages
+          log_message() {
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$BACKUP_DIR/backup.log"
+          }
+
+          log_message "Starting automated backup"
+
+          # Backup individual databases
+          for db in "${DATABASES[@]}"; do
+            log_message "Backing up database: $db"
+            mysqldump --single-transaction --routines --triggers -u root "$db" | gzip > "$BACKUP_DIR/$DATE/${db}_${TIMESTAMP}.sql.gz"
+
+            if [ $? -eq 0 ]; then
+              log_message "Successfully backed up $db"
+            else
+              log_message "ERROR: Failed to backup $db"
+              exit 1
+            fi
+          done
+
+          # Create full backup
+          log_message "Creating full backup"
+          mysqldump --single-transaction --routines --triggers --all-databases -u root | gzip > "$BACKUP_DIR/$DATE/full_backup_${TIMESTAMP}.sql.gz"
+
+          if [ $? -eq 0 ]; then
+            log_message "Successfully created full backup"
+          else
+            log_message "ERROR: Failed to create full backup"
+            exit 1
+          fi
+
+          # Clean up old backups
+          log_message "Cleaning up backups older than $RETENTION_DAYS days"
+          find "$BACKUP_DIR" -type d -name "20*" -mtime +$RETENTION_DAYS -exec rm -rf {} \; 2>/dev/null
+
+          log_message "Backup process completed successfully"
+        dest: "{{ backup_script_path }}"
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Schedule daily backup at 2 AM
+      cron:
+        name: "MariaDB Daily Backup"
+        minute: "0"
+        hour: "2"
+        job: "{{ backup_script_path }}"
+        user: root
+
+    - name: Schedule weekly full backup on Sunday at 1 AM
+      cron:
+        name: "MariaDB Weekly Full Backup"
+        minute: "0"
+        hour: "1"
+        weekday: "0"
+        job: "{{ backup_script_path }}"
+        user: root
+
+    - name: Create backup monitoring script
+      copy:
+        content: |
+          #!/bin/bash
+          # Backup Monitoring Script
+
+          BACKUP_DIR="/opt/mariadb-backups"
+          TODAY=$(date +%Y-%m-%d)
+          YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
+
+          echo "=== MariaDB Backup Status Report ==="
+          echo "Generated: $(date)"
+          echo
+
+          # Check today's backups
+          if [ -d "$BACKUP_DIR/$TODAY" ]; then
+            echo "✓ Today's backup directory exists: $BACKUP_DIR/$TODAY"
+            echo "Files in today's backup:"
+            ls -lh "$BACKUP_DIR/$TODAY/"
+          else
+            echo "✗ Today's backup directory missing: $BACKUP_DIR/$TODAY"
+          fi
+
+          echo
+
+          # Check backup log
+          if [ -f "$BACKUP_DIR/backup.log" ]; then
+            echo "Recent backup log entries:"
+            tail -10 "$BACKUP_DIR/backup.log"
+          else
+            echo "✗ Backup log file not found"
+          fi
+
+          echo
+          echo "=== Disk Usage ==="
+          du -sh "$BACKUP_DIR"/* 2>/dev/null
+        dest: "/usr/local/bin/backup-status.sh"
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Display scheduling information
+      debug:
+        msg: |
+          Backup Scheduling Configured:
+          - Daily backups: 2:00 AM
+          - Weekly full backups: Sunday 1:00 AM
+          - Backup script: {{ backup_script_path }}
+          - Status script: /usr/local/bin/backup-status.sh
+
+          To check backup status manually, run:
+          /usr/local/bin/backup-status.sh
