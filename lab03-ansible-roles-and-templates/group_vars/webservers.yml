@@ -1,0 +1,14 @@
+---
+# Production environment variables for webservers
+apache_admin_email: "production-admin@alnafi.com"
+apache_server_name: "{{ inventory_hostname }}.prod.alnafi.com"
+
+# Security settings for production
+apache_security_headers: true
+apache_server_tokens: "Prod"
+apache_server_signature: "Off"
+
+# Performance tuning for production
+apache_max_request_workers: 400
+apache_keepalive: "On"
+apache_keepalive_timeout: 5
