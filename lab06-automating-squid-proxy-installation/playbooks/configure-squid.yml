@@ -1,0 +1,83 @@
+---
+- name: Advanced Squid Proxy Configuration
+  hosts: proxy_servers
+  become: yes
+  vars:
+    squid_port: 3128
+    squid_cache_dir: /var/spool/squid
+    squid_cache_size: 1000
+    allowed_networks:
+      - 192.168.1.0/24
+      - 10.0.0.0/8
+    blocked_domains:
+      - facebook.com
+      - twitter.com
+      - youtube.com
+
+  tasks:
+    - name: Backup original squid configuration
+      copy:
+        src: /etc/squid/squid.conf
+        dest: /etc/squid/squid.conf.backup
+        remote_src: yes
+        backup: yes
+      tags: backup_config
+
+    - name: Deploy custom squid configuration
+      template:
+        src: ../templates/squid.conf.j2
+        dest: /etc/squid/squid.conf
+        owner: root
+        group: squid
+        mode: '0640'
+        backup: yes
+      notify: restart_squid
+      tags: deploy_config
+
+    - name: Create blocked domains ACL file
+      template:
+        src: ../templates/blocked_domains.j2
+        dest: /etc/squid/blocked_domains
+        owner: root
+        group: squid
+        mode: '0644'
+      notify: restart_squid
+      tags: blocked_domains
+
+    - name: Create squid log rotation configuration
+      copy:
+        content: |
+          /var/log/squid/*.log {
+              weekly
+              rotate 5
+              compress
+              notifempty
+              missingok
+              nocreate
+              sharedscripts
+              postrotate
+                  /usr/bin/systemctl reload squid.service
+              endscript
+          }
+        dest: /etc/logrotate.d/squid
+        mode: '0644'
+      tags: log_rotation
+
+    - name: Validate squid configuration
+      command: squid -k parse
+      register: config_check
+      failed_when: config_check.rc != 0
+      tags: validate_config
+
+    - name: Display configuration validation results
+      debug:
+        msg: "Squid configuration is valid"
+      when: config_check.rc == 0
+      tags: validate_config
+
+  handlers:
+    - name: restart_squid
+      systemd:
+        name: squid
+        state: restarted
+        daemon_reload: yes
