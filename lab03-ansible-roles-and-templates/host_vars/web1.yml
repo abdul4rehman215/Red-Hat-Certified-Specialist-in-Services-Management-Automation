@@ -1,0 +1,9 @@
+---
+# Development server specific variables
+apache_admin_email: "dev-admin@alnafi.com"
+apache_server_name: "web1.dev.alnafi.com"
+apache_port: 8080
+
+# Development-specific settings
+apache_debug_mode: true
+apache_log_level: "debug"
