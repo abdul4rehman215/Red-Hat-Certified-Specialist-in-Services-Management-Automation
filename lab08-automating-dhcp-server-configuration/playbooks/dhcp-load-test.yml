@@ -1,0 +1,45 @@
+---
+- name: DHCP Load Testing
+  hosts: dhcp_servers
+  become: yes
+  tasks:
+    - name: Install testing tools
+      yum:
+        name:
+          - nmap
+          - tcpdump
+          - dhcping
+        state: present
+
+    - name: Monitor DHCP traffic
+      shell: |
+        timeout 30 tcpdump -i any port 67 or port 68 -c 50 > /tmp/dhcp-traffic.log 2>&1 &
+        echo $! > /tmp/tcpdump.pid
+      async: 35
+      poll: 0
+
+    - name: Simulate multiple DHCP requests
+      shell: |
+        for i in {1..10}; do
+          dhcping -s {{ ansible_default_ipv4.address }} -c 00:11:22:33:44:$i &
+        done
+        wait
+      ignore_errors: yes
+
+    - name: Analyze DHCP performance
+      shell: |
+        sleep 5
+        if [ -f /tmp/tcpdump.pid ]; then
+          kill $(cat /tmp/tcpdump.pid) 2>/dev/null || true
+        fi
+        if [ -f /tmp/dhcp-traffic.log ]; then
+          echo "DHCP packets captured:"
+          wc -l /tmp/dhcp-traffic.log
+          echo "Sample traffic:"
+          head -10 /tmp/dhcp-traffic.log
+        fi
+      register: performance_analysis
+
+    - name: Display performance results
+      debug:
+        msg: "{{ performance_analysis.stdout_lines }}"
