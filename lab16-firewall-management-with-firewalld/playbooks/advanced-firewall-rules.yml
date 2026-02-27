@@ -1,0 +1,40 @@
+---
+- name: Configure Advanced Firewall Rules
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Create rich rules for specific traffic control
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="192.168.1.0/24" service name="ssh" accept'
+        zone: public
+        permanent: yes
+        immediate: yes
+        state: enabled
+      when: inventory_hostname in groups['webservers']
+
+    - name: Block specific IP addresses
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="10.0.0.100" drop'
+        zone: public
+        permanent: yes
+        immediate: yes
+        state: enabled
+
+    - name: Allow specific port range for application cluster
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="192.168.1.0/24" port port="9000-9010" protocol="tcp" accept'
+        zone: public
+        permanent: yes
+        immediate: yes
+        state: enabled
+      when: inventory_hostname in groups['webservers']
+
+    - name: Configure port forwarding for load balancer
+      firewalld:
+        rich_rule: 'rule family="ipv4" forward-port port="80" protocol="tcp" to-port="8080"'
+        zone: public
+        permanent: yes
+        immediate: yes
+        state: enabled
+      when: inventory_hostname in groups['webservers']
