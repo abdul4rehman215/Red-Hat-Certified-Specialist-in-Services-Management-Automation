@@ -1,0 +1,17 @@
+---
+# MariaDB Backup Configuration
+backup_settings:
+  backup_dir: "/opt/mariadb-backups"
+  retention_days: 7
+  compression: true
+  verify_backups: true
+
+database_config:
+  mysql_root_password: ""
+  backup_user: "backup_user"
+  backup_password: "secure_backup_pass"
+
+notification_settings:
+  enable_email: false
+  email_recipient: "admin@company.com"
+  log_file: "/var/log/mariadb-backup.log"
