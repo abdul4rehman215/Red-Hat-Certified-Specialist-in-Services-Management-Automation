@@ -1,0 +1,48 @@
+---
+- name: Secure Application Deployment
+  hosts: webservers
+  vars_files:
+    - secrets.yml
+    - database_config.yml
+
+  tasks:
+    - name: Display database connection info (masked)
+      debug:
+        msg: "Connecting to database {{ db_host }}:{{ db_port }} as user {{ db_user }}"
+
+    - name: Create database configuration file
+      copy:
+        content: |
+          [database]
+          host={{ database_settings.primary_db.host }}
+          username={{ database_settings.primary_db.username }}
+          password={{ database_settings.primary_db.password }}
+
+          [backup_database]
+          host={{ database_settings.backup_db.host }}
+          username={{ database_settings.backup_db.username }}
+          password={{ database_settings.backup_db.password }}
+        dest: /tmp/app_database.conf
+        mode: '0600'
+
+    - name: Create API configuration
+      copy:
+        content: |
+          API_KEY={{ api_key }}
+          API_SECRET={{ api_secret }}
+          JWT_SECRET={{ application_secrets.jwt_secret }}
+        dest: /tmp/api_config.env
+        mode: '0600'
+
+    - name: Verify files were created
+      stat:
+        path: "{{ item }}"
+      register: file_stats
+      loop:
+        - /tmp/app_database.conf
+        - /tmp/api_config.env
+
+    - name: Display file creation status
+      debug:
+        msg: "File {{ item.item }} exists: {{ item.stat.exists }}"
+      loop: "{{ file_stats.results }}"
