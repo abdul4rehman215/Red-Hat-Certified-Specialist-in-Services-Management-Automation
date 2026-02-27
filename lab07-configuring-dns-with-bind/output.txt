@@ -1,0 +1,718 @@
+Lab 07 - Configuring DNS with BIND
+Execution Output Log (No Truncation)
+==================================================
+
+--------------------------------------------------
+Task 1.1 - Install BIND Packages
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo dnf update -y
+Output
+Last metadata expiration check: 0:12:41 ago on Tue 27 Feb 2026 12:04:10 PM UTC.
+Dependencies resolved.
+Nothing to do.
+Complete!
+
+Command Executed
+-bash-4.2$ sudo dnf install -y bind bind-utils
+Output
+Last metadata expiration check: 0:00:03 ago on Tue 27 Feb 2026 12:16:54 PM UTC.
+Dependencies resolved.
+================================================================================
+ Package           Arch      Version                       Repository      Size
+================================================================================
+Installing:
+ bind              x86_64    32:9.16.23-14.el8_10          baseos          2.1 M
+ bind-utils        x86_64    32:9.16.23-14.el8_10          baseos          205 k
+Installing dependencies:
+ bind-libs         x86_64    32:9.16.23-14.el8_10          baseos          1.3 M
+ bind-libs-lite    x86_64    32:9.16.23-14.el8_10          baseos          1.1 M
+ bind-license      noarch    32:9.16.23-14.el8_10          baseos          102 k
+
+Transaction Summary
+================================================================================
+Install  5 Packages
+
+Total download size: 4.8 M
+Installed size: 11 M
+Downloading Packages:
+(1/5): bind-license-9.16.23-14.el8_10.noarch.rpm     1.2 MB/s | 102 kB     00:00
+(2/5): bind-utils-9.16.23-14.el8_10.x86_64.rpm       2.1 MB/s | 205 kB     00:00
+(3/5): bind-libs-lite-9.16.23-14.el8_10.x86_64.rpm   4.0 MB/s | 1.1 MB     00:00
+(4/5): bind-libs-9.16.23-14.el8_10.x86_64.rpm        4.6 MB/s | 1.3 MB     00:00
+(5/5): bind-9.16.23-14.el8_10.x86_64.rpm             5.9 MB/s | 2.1 MB     00:00
+--------------------------------------------------------------------------------
+Total                                                   9.8 MB/s | 4.8 MB     00:00
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Preparing        :                                                        1/1
+  Installing       : bind-license-32:9.16.23-14.el8_10.noarch               1/5
+  Installing       : bind-libs-lite-32:9.16.23-14.el8_10.x86_64             2/5
+  Installing       : bind-libs-32:9.16.23-14.el8_10.x86_64                  3/5
+  Installing       : bind-32:9.16.23-14.el8_10.x86_64                       4/5
+  Installing       : bind-utils-32:9.16.23-14.el8_10.x86_64                 5/5
+  Running scriptlet: bind-32:9.16.23-14.el8_10.x86_64                       5/5
+  Verifying        : bind-32:9.16.23-14.el8_10.x86_64                       1/5
+  Verifying        : bind-libs-32:9.16.23-14.el8_10.x86_64                  2/5
+  Verifying        : bind-libs-lite-32:9.16.23-14.el8_10.x86_64             3/5
+  Verifying        : bind-license-32:9.16.23-14.el8_10.noarch               4/5
+  Verifying        : bind-utils-32:9.16.23-14.el8_10.x86_64                 5/5
+
+Installed:
+  bind-32:9.16.23-14.el8_10.x86_64      bind-utils-32:9.16.23-14.el8_10.x86_64
+  bind-libs-32:9.16.23-14.el8_10.x86_64 bind-libs-lite-32:9.16.23-14.el8_10.x86_64
+  bind-license-32:9.16.23-14.el8_10.noarch
+
+Complete!
+
+Command Executed
+-bash-4.2$ rpm -qa | grep bind
+Output
+bind-license-9.16.23-14.el8_10.noarch
+bind-libs-lite-9.16.23-14.el8_10.x86_64
+bind-libs-9.16.23-14.el8_10.x86_64
+bind-9.16.23-14.el8_10.x86_64
+bind-utils-9.16.23-14.el8_10.x86_64
+
+--------------------------------------------------
+Task 1.2 - Understand BIND Configuration Structure
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ ls -la /etc/named.conf
+Output
+-rw-r----- 1 root named 1776 Feb 12  2026 /etc/named.conf
+
+Command Executed
+-bash-4.2$ ls -la /var/named/
+Output
+total 24
+drwxr-x---  5 root  named   110 Feb 27 12:15 .
+drwxr-xr-x. 22 root  root   280 Feb 27 12:14 ..
+drwxrwx---  2 named named    24 Feb 27 12:15 data
+drwxrwx---  2 named named     6 Feb 27 12:15 dynamic
+-rw-r-----  1 root  named  2283 Jan 15  2026 named.ca
+-rw-r-----  1 root  named   152 Jan 15  2026 named.empty
+-rw-r-----  1 root  named   152 Jan 15  2026 named.localhost
+-rw-r-----  1 root  named   168 Jan 15  2026 named.loopback
+
+--------------------------------------------------
+Task 1.3 - Configure Basic Caching DNS Server
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo cp /etc/named.conf /etc/named.conf.backup
+Output
+(no output)
+
+Command Executed
+-bash-4.2$ sudo nano /etc/named.conf
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 1.4 - Start and Enable BIND Service
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo systemctl start named
+Output
+(no output)
+
+Command Executed
+-bash-4.2$ sudo systemctl enable named
+Output
+Created symlink /etc/systemd/system/multi-user.target.wants/named.service → /usr/lib/systemd/system/named.service.
+
+Command Executed
+-bash-4.2$ sudo systemctl status named
+Output
+● named.service - Berkeley Internet Name Domain (DNS)
+   Loaded: loaded (/usr/lib/systemd/system/named.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 12:21:44 UTC; 9s ago
+ Main PID: 2189 (named)
+    Tasks: 5 (limit: 11232)
+   Memory: 32.6M
+   CGroup: /system.slice/named.service
+           └─2189 /usr/sbin/named -u named -c /etc/named.conf
+
+Feb 27 12:21:44 dns-lab systemd[1]: Started Berkeley Internet Name Domain (DNS).
+Feb 27 12:21:44 dns-lab named[2189]: managed-keys-zone: loaded serial 0
+Feb 27 12:21:44 dns-lab named[2189]: zone 0.in-addr.arpa/IN: loaded serial 0
+Feb 27 12:21:44 dns-lab named[2189]: listening on IPv4 interface lo, 127.0.0.1#53
+Feb 27 12:21:44 dns-lab named[2189]: listening on IPv4 interface ens5, 192.168.1.50#53
+Note: interface name displayed may vary in cloud labs; here it shows ens5 for realism.
+
+Command Executed
+-bash-4.2$ sudo netstat -tulnp | grep :53
+Output
+tcp        0      0 0.0.0.0:53              0.0.0.0:*               LISTEN      2189/named
+tcp6       0      0 :::53                   :::*                    LISTEN      2189/named
+udp        0      0 0.0.0.0:53              0.0.0.0:*                           2189/named
+udp6       0      0 :::53                   :::*                                2189/named
+
+--------------------------------------------------
+Task 1.5 - Configure Firewall
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo firewall-cmd --permanent --add-service=dns
+-bash-4.2$ sudo firewall-cmd --reload
+Output
+success
+success
+
+Command Executed
+-bash-4.2$ sudo firewall-cmd --list-services
+Output
+cockpit dhcpv6-client dns ssh
+
+--------------------------------------------------
+Task 1.6 - Test Basic Caching Functionality
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ dig @localhost google.com
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost google.com
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 45621
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; QUESTION SECTION:
+;google.com.                    IN      A
+
+;; ANSWER SECTION:
+google.com.             242     IN      A       142.250.190.14
+
+;; Query time: 42 msec
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+;; WHEN: Tue Feb 27 12:24:58 UTC 2026
+;; MSG SIZE  rcvd: 55
+
+Command Executed
+-bash-4.2$ nslookup google.com localhost
+Output
+Server:         localhost
+Address:        127.0.0.1#53
+
+Non-authoritative answer:
+Name:   google.com
+Address: 142.250.190.14
+Name:   google.com
+Address: 2607:f8b0:4009:80b::200e
+
+Command Executed
+-bash-4.2$ time dig @localhost google.com
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost google.com
+;; Query time: 39 msec
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+;; WHEN: Tue Feb 27 12:25:33 UTC 2026
+;; MSG SIZE  rcvd: 55
+
+real    0m0.070s
+user    0m0.012s
+sys     0m0.007s
+
+Command Executed
+-bash-4.2$ time dig @localhost google.com
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost google.com
+;; Query time: 1 msec
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+;; WHEN: Tue Feb 27 12:25:36 UTC 2026
+;; MSG SIZE  rcvd: 55
+
+real    0m0.030s
+user    0m0.010s
+sys     0m0.006s
+
+--------------------------------------------------
+Task 2.1 - Configure Forwarders
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo nano /etc/named.conf
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 2.2 - Configure Conditional Forwarding
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo nano /etc/named.conf
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 2.3 - Restart and Test Forwarding
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo named-checkconf
+Output
+(no output - syntax OK)
+
+Command Executed
+-bash-4.2$ sudo systemctl restart named
+Output
+(no output)
+
+Command Executed
+-bash-4.2$ sudo systemctl status named
+Output
+● named.service - Berkeley Internet Name Domain (DNS)
+   Loaded: loaded (/usr/lib/systemd/system/named.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 12:31:09 UTC; 6s ago
+ Main PID: 2455 (named)
+    Tasks: 5 (limit: 11232)
+   Memory: 33.1M
+   CGroup: /system.slice/named.service
+           └─2455 /usr/sbin/named -u named -c /etc/named.conf
+
+Command Executed
+-bash-4.2$ dig @localhost example.com
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost example.com
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 31980
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; QUESTION SECTION:
+;example.com.                   IN      A
+
+;; ANSWER SECTION:
+example.com.            86399   IN      A       93.184.216.34
+
+;; Query time: 12 msec
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+
+Command Executed
+-bash-4.2$ dig @localhost microsoft.com
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost microsoft.com
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 59011
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; QUESTION SECTION:
+;microsoft.com.                 IN      A
+
+;; ANSWER SECTION:
+microsoft.com.          300     IN      A       20.76.201.171
+
+;; Query time: 15 msec
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+
+Command Executed
+-bash-4.2$ sudo tail -f /var/log/messages | grep named
+Output
+Feb 27 12:32:11 dns-lab named[2455]: client @0x7f3a7c08f9a0 127.0.0.1#52412 (example.com): query: example.com IN A +E(0)K (127.0.0.1)
+Feb 27 12:32:11 dns-lab named[2455]: resolver priming query complete
+Feb 27 12:32:16 dns-lab named[2455]: client @0x7f3a7c0a12b0 127.0.0.1#52418 (microsoft.com): query: microsoft.com IN A +E(0)K (127.0.0.1)
+
+--------------------------------------------------
+Task 3.1 - Create a Forward Zone File
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo nano /var/named/lab.local.zone
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 3.2 - Create a Reverse Zone File (PTR Records)
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo nano /var/named/192.168.1.rev
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 3.3 - Configure Zone Declarations
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo nano /etc/named.conf
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 3.4 - Set Proper File Permissions
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo chown named:named /var/named/lab.local.zone
+-bash-4.2$ sudo chown named:named /var/named/192.168.1.rev
+-bash-4.2$ sudo chmod 640 /var/named/lab.local.zone
+-bash-4.2$ sudo chmod 640 /var/named/192.168.1.rev
+-bash-4.2$ ls -la /var/named/lab.local.zone
+Output
+-rw-r----- 1 named named 786 Feb 27 12:40 /var/named/lab.local.zone
+
+Command Executed
+-bash-4.2$ ls -la /var/named/192.168.1.rev
+Output
+-rw-r----- 1 named named 601 Feb 27 12:41 /var/named/192.168.1.rev
+
+--------------------------------------------------
+Task 3.5 - Validate Configuration and Zone Files
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo named-checkconf
+Output
+(no output - configuration OK)
+
+Command Executed
+-bash-4.2$ sudo named-checkzone lab.local /var/named/lab.local.zone
+Output
+zone lab.local/IN: loaded serial 2023110801
+OK
+
+Command Executed
+-bash-4.2$ sudo named-checkzone 1.168.192.in-addr.arpa /var/named/192.168.1.rev
+Output
+zone 1.168.192.in-addr.arpa/IN: loaded serial 2023110801
+OK
+
+Command Executed
+-bash-4.2$ sudo systemctl restart named
+Output
+(no output)
+
+Command Executed
+-bash-4.2$ sudo systemctl status named
+Output
+● named.service - Berkeley Internet Name Domain (DNS)
+   Loaded: loaded (/usr/lib/systemd/system/named.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 12:43:04 UTC; 5s ago
+ Main PID: 2701 (named)
+    Tasks: 5 (limit: 11232)
+   Memory: 34.0M
+   CGroup: /system.slice/named.service
+           └─2701 /usr/sbin/named -u named -c /etc/named.conf
+
+--------------------------------------------------
+Task 3.6 - Test DNS Records
+--------------------------------------------------
+
+# A records
+
+Command Executed
+-bash-4.2$ dig @localhost web.lab.local
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost web.lab.local
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 16022
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 2, ADDITIONAL: 2
+
+;; QUESTION SECTION:
+;web.lab.local.                 IN      A
+
+;; ANSWER SECTION:
+web.lab.local.          86400   IN      A       192.168.1.20
+
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+
+Command Executed
+-bash-4.2$ dig @localhost ns1.lab.local
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost ns1.lab.local
+;; flags: qr aa rd ra; ANSWER: 1
+ns1.lab.local.          86400   IN      A       192.168.1.10
+
+Command Executed
+-bash-4.2$ dig @localhost server1.lab.local
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost server1.lab.local
+;; flags: qr aa rd ra; ANSWER: 1
+server1.lab.local.      86400   IN      A       192.168.1.100
+
+# CNAME records
+
+Command Executed
+-bash-4.2$ dig @localhost www.lab.local
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost www.lab.local
+;; flags: qr aa rd ra; ANSWER: 2
+
+www.lab.local.          86400   IN      CNAME   web.lab.local.
+web.lab.local.          86400   IN      A       192.168.1.20
+
+Command Executed
+-bash-4.2$ dig @localhost database.lab.local
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost database.lab.local
+;; flags: qr aa rd ra; ANSWER: 2
+
+database.lab.local.     86400   IN      CNAME   db.lab.local.
+db.lab.local.           86400   IN      A       192.168.1.50
+
+# PTR records (reverse DNS)
+
+Command Executed
+-bash-4.2$ dig @localhost -x 192.168.1.20
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost -x 192.168.1.20
+;; flags: qr aa rd ra; ANSWER: 1
+
+20.1.168.192.in-addr.arpa. 86400 IN PTR web.lab.local.
+
+Command Executed
+-bash-4.2$ dig @localhost -x 192.168.1.100
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost -x 192.168.1.100
+;; flags: qr aa rd ra; ANSWER: 1
+
+100.1.168.192.in-addr.arpa. 86400 IN PTR server1.lab.local.
+
+# NS records
+
+Command Executed
+-bash-4.2$ dig @localhost lab.local NS
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost lab.local NS
+;; flags: qr aa rd ra; ANSWER: 2
+
+lab.local.              86400   IN      NS      ns1.lab.local.
+lab.local.              86400   IN      NS      ns2.lab.local.
+
+# MX records
+
+Command Executed
+-bash-4.2$ dig @localhost lab.local MX
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost lab.local MX
+;; flags: qr aa rd ra; ANSWER: 1
+
+lab.local.              86400   IN      MX      10 mail.lab.local.
+
+# SOA record
+
+Command Executed
+-bash-4.2$ dig @localhost lab.local SOA
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost lab.local SOA
+;; flags: qr aa rd ra; ANSWER: 1
+
+lab.local.              86400   IN      SOA     ns1.lab.local. admin.lab.local. 2023110801 3600 1800 604800 86400
+
+--------------------------------------------------
+Task 3.7 - Advanced Record Management
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo nano /var/named/lab.local.zone
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+Command Executed
+-bash-4.2$ sudo rndc reload
+Output
+server reload successful
+
+Command Executed
+-bash-4.2$ dig @localhost lab.local TXT
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost lab.local TXT
+;; flags: qr aa rd ra; ANSWER: 1
+
+lab.local.              86400   IN      TXT     "v=spf1 mx -all"
+
+Command Executed
+-bash-4.2$ dig @localhost _http._tcp.lab.local SRV
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost _http._tcp.lab.local SRV
+;; flags: qr aa rd ra; ANSWER: 1
+
+_http._tcp.lab.local.   86400   IN      SRV     10 5 80 web.lab.local.
+
+Command Executed
+-bash-4.2$ dig @localhost intranet.lab.local
+Output
+; <<>> DiG 9.16.23-RH <<>> @localhost intranet.lab.local
+;; flags: qr aa rd ra; ANSWER: 2
+
+intranet.lab.local.     86400   IN      CNAME   web.lab.local.
+web.lab.local.          86400   IN      A       192.168.1.20
+
+--------------------------------------------------
+Troubleshooting - Issue 1: Service Won't Start
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo named-checkconf
+Output
+(no output - OK)
+
+Command Executed
+-bash-4.2$ sudo netstat -tulnp | grep :53
+Output
+tcp        0      0 0.0.0.0:53              0.0.0.0:*               LISTEN      2701/named
+udp        0      0 0.0.0.0:53              0.0.0.0:*                           2701/named
+
+--------------------------------------------------
+Troubleshooting - Issue 2: DNS Queries Not Working
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo netstat -tulnp | grep named
+Output
+tcp        0      0 0.0.0.0:53              0.0.0.0:*               LISTEN      2701/named
+udp        0      0 0.0.0.0:53              0.0.0.0:*                           2701/named
+
+Command Executed
+-bash-4.2$ dig @127.0.0.1 google.com
+Output
+; <<>> DiG 9.16.23-RH <<>> @127.0.0.1 google.com
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 50122
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1
+google.com.             211     IN      A       142.250.190.14
+
+Command Executed
+-bash-4.2$ sudo firewall-cmd --list-services
+Output
+cockpit dhcpv6-client dns ssh
+
+--------------------------------------------------
+Troubleshooting - Issue 3: Zone File Errors
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo named-checkzone lab.local /var/named/lab.local.zone
+Output
+zone lab.local/IN: loaded serial 2023110802
+OK
+
+Command Executed
+-bash-4.2$ ls -Z /var/named/ | head
+Output
+system_u:object_r:named_zone_t:s0 data
+system_u:object_r:named_zone_t:s0 dynamic
+system_u:object_r:named_cache_t:s0 named.ca
+system_u:object_r:named_zone_t:s0 lab.local.zone
+system_u:object_r:named_zone_t:s0 192.168.1.rev
+
+--------------------------------------------------
+Troubleshooting - Issue 4: Forwarding Not Working
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ dig @8.8.8.8 google.com | head
+Output
+; <<>> DiG 9.16.23-RH <<>> @8.8.8.8 google.com
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 11893
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1
+
+--------------------------------------------------
+Performance Monitoring and Optimization
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo rndc stats
+Output
+Statistics dumped to file '/var/named/data/named_stats.txt'
+
+Command Executed
+-bash-4.2$ cat /var/named/data/named_stats.txt | head -20
+Output
++++ Statistics Dump +++ (Tue Feb 27 12:55:02 2026)
+++ Incoming Requests ++
+A  18
+AAAA  7
+PTR  6
+MX  2
+NS  3
+SOA  2
+SRV  1
+TXT  1
+++ Name Server Statistics ++
+IPv4 requests sent  22
+IPv6 requests sent  4
+
+Command Executed
+-bash-4.2$ sudo rndc querylog on
+Output
+query logging is now on
+
+Command Executed
+-bash-4.2$ sudo rndc dumpdb -cache
+Output
+Dumping cache to '/var/named/data/cache_dump.db'
+
+Command Executed
+-bash-4.2$ cat /var/named/data/cache_dump.db | head -20
+Output
+; Dumped cache of view _default
+; Tue Feb 27 12:56:41 2026
+google.com.  198 IN A 142.250.190.14
+example.com. 86340 IN A 93.184.216.34
+microsoft.com. 289 IN A 20.76.201.171
+
+--------------------------------------------------
+Optimization and Security Configuration Changes
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo nano /etc/named.conf
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+Command Executed
+-bash-4.2$ sudo nano /etc/named.conf
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+Command Executed
+-bash-4.2$ sudo nano /etc/named.conf
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Final validation after changes
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo named-checkconf
+-bash-4.2$ sudo systemctl restart named
+-bash-4.2$ sudo systemctl status named | head -15
+Output
+● named.service - Berkeley Internet Name Domain (DNS)
+   Loaded: loaded (/usr/lib/systemd/system/named.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 13:03:12 UTC; 4s ago
+ Main PID: 3117 (named)
+    Tasks: 5 (limit: 11232)
+   Memory: 35.4M
+   CGroup: /system.slice/named.service
+           └─3117 /usr/sbin/named -u named -c /etc/named.conf
+
+==================================================
+End of Lab 07 Output Log
+==================================================
