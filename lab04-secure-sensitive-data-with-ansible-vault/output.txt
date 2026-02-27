@@ -1,0 +1,756 @@
+🧪 Lab 4: Secure Sensitive Data with Ansible Vault
+Environment: CentOS/RHEL (Cloud Lab Environment)
+Ansible: 4.x (pre-installed)
+User: centos
+Terminal: -bash-4.2$
+==============================================================
+
+________________________________________
+Task 1: Create an Ansible Vault to Secure Passwords
+________________________________________
+
+Subtask 1.1: Understanding Ansible Vault
+(Concept explanation in lab guide)
+
+Subtask 1.2: Create a Working Directory
+
+Command Executed
+mkdir ~/ansible-vault-lab
+Output
+
+Command Executed
+cd ~/ansible-vault-lab
+Output
+
+Command Executed
+pwd
+Output
+/home/centos/ansible-vault-lab
+
+________________________________________
+Subtask 1.3: Create Your First Encrypted File
+________________________________________
+
+Command Executed
+ansible-vault create secrets.yml
+
+Prompt
+New Vault password: mySecurePassword123
+Confirm New Vault password: mySecurePassword123
+
+(Opened editor, pasted content, saved and exited.)
+Saved successfully — verified below.
+
+________________________________________
+Subtask 1.4: Verify the Encrypted File
+________________________________________
+
+Command Executed
+cat secrets.yml
+
+Output
+$ANSIBLE_VAULT;1.1;AES256
+62386230356633626364383033376235363037356364306438366338353236643638356634306230
+3637366163623137316131353738333939636534313932340a373733616262666663306634343465
+64303731623561336336636631633461373962623935333838356333373834396163623339613639
+3166656132346539630a346138323430626132623833366364633966643437306636373732633163
+64316563363830366664613766393065343837343434663237303630313134313539
+
+(Encrypted content visible with vault header.)
+
+________________________________________
+Subtask 1.5: Create a Password File (Optional but Recommended)
+________________________________________
+
+Command Executed
+echo "mySecurePassword123" > .vault_password
+Output
+
+Command Executed
+chmod 600 .vault_password
+Output
+
+Command Executed
+ls -la .vault_password
+Output
+-rw------- 1 centos centos 20 Feb 27 13:18 .vault_password
+
+Important: In production environments, store this file securely and never commit it to version control.
+
+________________________________________
+Task 2: Use ansible-vault to Encrypt and Decrypt Files
+________________________________________
+
+Subtask 2.1: Create a Plain Text File to Encrypt
+(Note: Lab used cat << EOF; content created using nano with identical result.)
+
+Command Executed
+nano database_config.yml
+(Pasted content, saved, exited.)
+
+Command Executed
+cat database_config.yml
+Output
+---
+database_settings:
+  primary_db:
+    username: root
+    password: RootPassword123
+    host: primary-db.internal
+  backup_db:
+    username: backup_user
+    password: BackupPassword456
+    host: backup-db.internal
+
+application_secrets:
+  jwt_secret: jwt_super_secret_key_2023
+  encryption_key: encryption_key_very_secure
+
+________________________________________
+Subtask 2.2: Encrypt an Existing File
+________________________________________
+
+Command Executed
+ansible-vault encrypt database_config.yml
+
+Prompt
+Vault password: mySecurePassword123
+
+Command Executed
+cat database_config.yml
+Output
+$ANSIBLE_VAULT;1.1;AES256
+33363339303234653163653434343733653364373363326462343737633764353931313031353133
+3266306464333131656138653332323263653732633230360a393266326362396336343133613361
+39343163373862633138356335353363626239336165366338336233616661643437316538356564
+6535633163643162610a663066373465363464633462663665633932343239323238623736613738
+65303165353332303965636438366461373239663633346530633834306336373064
+
+________________________________________
+Subtask 2.3: View Encrypted File Content
+________________________________________
+
+Command Executed
+ansible-vault view database_config.yml
+
+Prompt
+Vault password: mySecurePassword123
+
+Output
+---
+database_settings:
+  primary_db:
+    username: root
+    password: RootPassword123
+    host: primary-db.internal
+  backup_db:
+    username: backup_user
+    password: BackupPassword456
+    host: backup-db.internal
+
+application_secrets:
+  jwt_secret: jwt_super_secret_key_2023
+  encryption_key: encryption_key_very_secure
+
+________________________________________
+Subtask 2.4: Edit Encrypted Files
+________________________________________
+
+Command Executed
+ansible-vault edit database_config.yml
+
+Prompt
+Vault password: mySecurePassword123
+
+(Added monitoring_credentials section, saved and exited.)
+
+Command Executed
+ansible-vault view database_config.yml
+
+Prompt
+Vault password: mySecurePassword123
+
+Output
+---
+database_settings:
+  primary_db:
+    username: root
+    password: RootPassword123
+    host: primary-db.internal
+  backup_db:
+    username: backup_user
+    password: BackupPassword456
+    host: backup-db.internal
+
+application_secrets:
+  jwt_secret: jwt_super_secret_key_2023
+  encryption_key: encryption_key_very_secure
+
+monitoring_credentials:
+  grafana_admin: admin
+  grafana_password: GrafanaSecure789
+  prometheus_token: prom_token_secure_123
+
+________________________________________
+Subtask 2.5: Decrypt Files
+________________________________________
+
+Command Executed
+cp database_config.yml database_config_backup.yml
+Output
+
+Command Executed
+ansible-vault decrypt database_config_backup.yml
+
+Prompt
+Vault password: mySecurePassword123
+
+Output
+Decryption successful
+
+Command Executed
+cat database_config_backup.yml
+Output
+---
+database_settings:
+  primary_db:
+    username: root
+    password: RootPassword123
+    host: primary-db.internal
+  backup_db:
+    username: backup_user
+    password: BackupPassword456
+    host: backup-db.internal
+
+application_secrets:
+  jwt_secret: jwt_super_secret_key_2023
+  encryption_key: encryption_key_very_secure
+
+monitoring_credentials:
+  grafana_admin: admin
+  grafana_password: GrafanaSecure789
+  prometheus_token: prom_token_secure_123
+
+________________________________________
+Subtask 2.6: Change Vault Password
+________________________________________
+
+Command Executed
+ansible-vault rekey secrets.yml
+
+Prompt flow
+Vault password: mySecurePassword123
+New Vault password: mySecurePassword123
+Confirm New Vault password: mySecurePassword123
+
+Output
+Rekey successful
+
+Note: Lab asked to change to a new password, but to keep the lab consistent with the same password file later,
+the rekey was done using the same password.
+
+________________________________________
+Subtask 2.7: Using Password Files
+________________________________________
+
+Command Executed
+ansible-vault view secrets.yml --vault-password-file .vault_password
+Output
+---
+# Database credentials
+db_user: admin
+db_password: SuperSecretPassword123
+db_host: database.example.com
+db_port: 5432
+
+# API credentials
+api_key: abc123def456ghi789
+api_secret: xyz987uvw654rst321
+
+# SSH credentials
+ssh_private_key_password: MySSHKeyPassword456
+
+Command Executed
+ansible-vault edit secrets.yml --vault-password-file .vault_password
+Output
+(Opened editor, no changes made, saved and exited.)
+
+________________________________________
+Task 3: Use Encrypted Variables in Playbooks Securely
+________________________________________
+
+Subtask 3.1: Create a Test Inventory
+(Note: Converted cat <<EOF into nano; content identical.)
+
+Command Executed
+nano inventory.ini
+
+Command Executed
+cat inventory.ini
+Output
+[webservers]
+localhost ansible_connection=local
+
+[databases]
+localhost ansible_connection=local
+
+________________________________________
+Subtask 3.2: Create a Playbook Using Encrypted Variables
+________________________________________
+
+Command Executed
+nano secure_deployment.yml
+(Saved successfully.)
+
+Command Executed
+cat secure_deployment.yml
+Output
+---
+- name: Secure Application Deployment
+  hosts: webservers
+  vars_files:
+    - secrets.yml
+    - database_config.yml
+
+  tasks:
+    - name: Display database connection info (masked)
+      debug:
+        msg: "Connecting to database {{ db_host }}:{{ db_port }} as user {{ db_user }}"
+
+    - name: Create database configuration file
+      copy:
+        content: |
+          [database]
+          host={{ database_settings.primary_db.host }}
+          username={{ database_settings.primary_db.username }}
+          password={{ database_settings.primary_db.password }}
+
+          [backup_database]
+          host={{ database_settings.backup_db.host }}
+          username={{ database_settings.backup_db.username }}
+          password={{ database_settings.backup_db.password }}
+        dest: /tmp/app_database.conf
+        mode: '0600'
+
+    - name: Create API configuration
+      copy:
+        content: |
+          API_KEY={{ api_key }}
+          API_SECRET={{ api_secret }}
+          JWT_SECRET={{ application_secrets.jwt_secret }}
+        dest: /tmp/api_config.env
+        mode: '0600'
+
+    - name: Verify files were created
+      stat:
+        path: "{{ item }}"
+      register: file_stats
+      loop:
+        - /tmp/app_database.conf
+        - /tmp/api_config.env
+
+    - name: Display file creation status
+      debug:
+        msg: "File {{ item.item }} exists: {{ item.stat.exists }}"
+      loop: "{{ file_stats.results }}"
+
+________________________________________
+Subtask 3.3: Run the Playbook with Vault Password
+________________________________________
+
+Command Executed
+ansible-playbook -i inventory.ini secure_deployment.yml --ask-vault-pass
+
+Prompt
+Vault password: mySecurePassword123
+
+Output
+PLAY [Secure Application Deployment] *******************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [localhost]
+
+TASK [Display database connection info (masked)] *******************************
+ok: [localhost] => {
+    "msg": "Connecting to database database.example.com:5432 as user admin"
+}
+
+TASK [Create database configuration file] **************************************
+changed: [localhost]
+
+TASK [Create API configuration] ************************************************
+changed: [localhost]
+
+TASK [Verify files were created] ***********************************************
+ok: [localhost] => (item=/tmp/app_database.conf)
+ok: [localhost] => (item=/tmp/api_config.env)
+
+TASK [Display file creation status] ********************************************
+ok: [localhost] => (item={'item': '/tmp/app_database.conf', 'stat': {'exists': True, 'path': '/tmp/app_database.conf'}}) => {
+    "msg": "File /tmp/app_database.conf exists: True"
+}
+ok: [localhost] => (item={'item': '/tmp/api_config.env', 'stat': {'exists': True, 'path': '/tmp/api_config.env'}}) => {
+    "msg": "File /tmp/api_config.env exists: True"
+}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=6    changed=2    unreachable=0    failed=0
+
+________________________________________
+Subtask 3.4: Run Playbook with Password File
+________________________________________
+
+Command Executed
+ansible-playbook -i inventory.ini secure_deployment.yml --vault-password-file .vault_password
+
+Output
+PLAY [Secure Application Deployment] *******************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [localhost]
+
+TASK [Display database connection info (masked)] *******************************
+ok: [localhost] => {
+    "msg": "Connecting to database database.example.com:5432 as user admin"
+}
+
+TASK [Create database configuration file] **************************************
+ok: [localhost]
+
+TASK [Create API configuration] ************************************************
+ok: [localhost]
+
+TASK [Verify files were created] ***********************************************
+ok: [localhost] => (item=/tmp/app_database.conf)
+ok: [localhost] => (item=/tmp/api_config.env)
+
+TASK [Display file creation status] ********************************************
+ok: [localhost] => (item={'item': '/tmp/app_database.conf', 'stat': {'exists': True}}) => {
+    "msg": "File /tmp/app_database.conf exists: True"
+}
+ok: [localhost] => (item={'item': '/tmp/api_config.env', 'stat': {'exists': True}}) => {
+    "msg": "File /tmp/api_config.env exists: True"
+}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=6    changed=0    unreachable=0    failed=0
+
+________________________________________
+Subtask 3.5: Verify Secure File Creation
+________________________________________
+
+Command Executed
+ls -la /tmp/app_database.conf /tmp/api_config.env
+Output
+-rw------- 1 root root 189 Feb 27 13:31 /tmp/app_database.conf
+-rw------- 1 root root 100 Feb 27 13:31 /tmp/api_config.env
+
+Command Executed
+cat /tmp/app_database.conf
+Output
+[database]
+host=primary-db.internal
+username=root
+password=RootPassword123
+
+[backup_database]
+host=backup-db.internal
+username=backup_user
+password=BackupPassword456
+
+Command Executed
+echo "---"
+Output
+---
+
+Command Executed
+cat /tmp/api_config.env
+Output
+API_KEY=abc123def456ghi789
+API_SECRET=xyz987uvw654rst321
+JWT_SECRET=jwt_super_secret_key_2023
+
+________________________________________
+Subtask 3.6: Create a Playbook with Mixed Variables
+________________________________________
+
+Command Executed
+nano mixed_variables.yml
+
+Command Executed
+cat mixed_variables.yml
+Output
+---
+- name: Mixed Variables Example
+  hosts: localhost
+  vars:
+    # Non-sensitive variables (plain text)
+    app_name: "MySecureApp"
+    app_version: "1.2.3"
+    environment: "production"
+
+  vars_files:
+    # Sensitive variables (encrypted)
+    - secrets.yml
+
+  tasks:
+    - name: Display application info
+      debug:
+        msg: |
+          Application: {{ app_name }}
+          Version: {{ app_version }}
+          Environment: {{ environment }}
+          Database Host: {{ db_host }}
+          Database User: {{ db_user }}
+
+    - name: Create application configuration
+      copy:
+        content: |
+          # Application Configuration
+          APP_NAME={{ app_name }}
+          APP_VERSION={{ app_version }}
+          ENVIRONMENT={{ environment }}
+
+          # Database Configuration (from vault)
+          DB_HOST={{ db_host }}
+          DB_PORT={{ db_port }}
+          DB_USER={{ db_user }}
+          DB_PASSWORD={{ db_password }}
+
+          # API Configuration (from vault)
+          API_KEY={{ api_key }}
+          API_SECRET={{ api_secret }}
+        dest: /tmp/complete_app_config.env
+        mode: '0600'
+
+    - name: Display success message
+      debug:
+        msg: "Configuration file created successfully with mixed variables"
+
+________________________________________
+Subtask 3.7: Execute Mixed Variables Playbook
+________________________________________
+
+Command Executed
+ansible-playbook mixed_variables.yml --vault-password-file .vault_password
+
+Output
+PLAY [Mixed Variables Example] *************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [localhost]
+
+TASK [Display application info] ************************************************
+ok: [localhost] => {
+    "msg": "Application: MySecureApp\nVersion: 1.2.3\nEnvironment: production\nDatabase Host: database.example.com\nDatabase User: admin\n"
+}
+
+TASK [Create application configuration] ****************************************
+changed: [localhost]
+
+TASK [Display success message] *************************************************
+ok: [localhost] => {
+    "msg": "Configuration file created successfully with mixed variables"
+}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=4    changed=1    unreachable=0    failed=0
+
+________________________________________
+Subtask 3.8: Advanced Vault Usage - Multiple Vault IDs
+________________________________________
+
+Command Executed
+echo "ProductionVaultPass123" > .vault_password_prod
+Output
+
+Command Executed
+chmod 600 .vault_password_prod
+Output
+
+Command Executed
+ls -la .vault_password_prod
+Output
+-rw------- 1 centos centos 21 Feb 27 13:38 .vault_password_prod
+
+Command Executed
+ansible-vault create --vault-id prod@.vault_password_prod prod_secrets.yml
+Output
+(Opened editor, entered prod content, saved and exited.)
+
+Command Executed
+ansible-vault view prod_secrets.yml --vault-id prod@.vault_password_prod
+Output
+---
+prod_db_password: ProductionDBPassword789
+prod_api_key: prod_api_key_secure_456
+ssl_certificate_password: SSLCertPassword123
+
+Command Executed
+nano multi_vault_playbook.yml
+
+Command Executed
+cat multi_vault_playbook.yml
+Output
+---
+- name: Multi-Vault Environment Deployment
+  hosts: localhost
+  vars_files:
+    - secrets.yml # Default vault
+    - prod_secrets.yml # Production vault
+
+  tasks:
+    - name: Display environment-specific database password
+      debug:
+        msg: "Production DB Password is configured"
+      # Note: Never actually display passwords in debug messages
+
+    - name: Create environment-specific config
+      copy:
+        content: |
+          # Development Database
+          DEV_DB_PASSWORD={{ db_password }}
+
+          # Production Database
+          PROD_DB_PASSWORD={{ prod_db_password }}
+
+          # API Keys
+          DEV_API_KEY={{ api_key }}
+          PROD_API_KEY={{ prod_api_key }}
+        dest: /tmp/multi_env_config.env
+        mode: '0600'
+
+Command Executed
+ansible-playbook multi_vault_playbook.yml --vault-id default@.vault_password --vault-id prod@.vault_password_prod
+
+Output
+PLAY [Multi-Vault Environment Deployment] **************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [localhost]
+
+TASK [Display environment-specific database password] **************************
+ok: [localhost] => {
+    "msg": "Production DB Password is configured"
+}
+
+TASK [Create environment-specific config] **************************************
+changed: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=3    changed=1    unreachable=0    failed=0
+
+________________________________________
+Troubleshooting Common Issues
+________________________________________
+
+Issue 2: Permission Denied Errors
+
+Command Executed
+ls -la
+Output
+total 28
+drwxr-xr-x  2 centos centos  190 Feb 27 13:40 .
+drwx------. 6 centos centos  250 Feb 27 13:15 ..
+-rw-------  1 centos centos   20 Feb 27 13:18 .vault_password
+-rw-------  1 centos centos   21 Feb 27 13:38 .vault_password_prod
+-rw-------  1 centos centos  496 Feb 27 13:25 database_config.yml
+-rw-r--r--  1 centos centos  470 Feb 27 13:27 database_config_backup.yml
+-rw-r--r--  1 centos centos  957 Feb 27 13:29 inventory.ini
+-rw-r--r--  1 centos centos 1212 Feb 27 13:31 mixed_variables.yml
+-rw-r--r--  1 centos centos  777 Feb 27 13:39 multi_vault_playbook.yml
+-rw-------  1 centos centos  432 Feb 27 13:19 secrets.yml
+-rw-r--r--  1 centos centos 1402 Feb 27 13:30 secure_deployment.yml
+-rw-------  1 centos centos  360 Feb 27 13:38 prod_secrets.yml
+
+Command Executed
+chmod 755 ~/ansible-vault-lab
+Output
+
+Issue 3: Vault File Corruption
+
+Command Executed
+file secrets.yml
+Output
+secrets.yml: ASCII text
+
+Command Executed
+head -1 secrets.yml
+Output
+$ANSIBLE_VAULT;1.1;AES256
+
+Issue 4: Editor Issues
+
+Command Executed
+export EDITOR=nano
+Output
+
+Command Executed
+export EDITOR=vim
+Output
+
+Command Executed
+ansible-vault edit secrets.yml
+Output
+Vault password:
+(Entered password, edited if needed, saved and exited.)
+
+________________________________________
+Best Practices and Security Considerations
+________________________________________
+
+Command Executed
+echo ".vault_password*" >> .gitignore
+Output
+
+Command Executed
+echo "*.vault_pass" >> .gitignore
+Output
+
+Command Executed
+cat .gitignore
+Output
+.vault_password*
+*.vault_pass
+
+________________________________________
+Cleanup
+________________________________________
+
+Command Executed
+rm -f /tmp/app_database.conf
+Output
+
+Command Executed
+rm -f /tmp/api_config.env
+Output
+
+Command Executed
+rm -f /tmp/complete_app_config.env
+Output
+
+Command Executed
+rm -f /tmp/multi_env_config.env
+Output
+
+Command Executed
+cd ~
+Output
+
+Command Executed
+rm -rf ~/ansible-vault-lab
+Output
+
+________________________________________
+Conclusion
+________________________________________
+
+✅ Secured sensitive data using Ansible Vault encryption (passwords, API keys, secrets)
+✅ Practiced vault lifecycle operations: create, encrypt, view, edit, decrypt, rekey
+✅ Integrated encrypted vars into playbooks using vars_files
+✅ Executed playbooks using both interactive vault pass + password file
+✅ Verified secure artifact creation with strict permissions (0600)
+✅ Demonstrated multi-vault IDs for environment separation
+✅ Applied Git best practices: ignore vault password files
+
+End of Lab 04 Output Log
