@@ -1,0 +1,32 @@
+---
+- hosts: localhost
+  remote_user: root
+  roles:
+    - apache-role
+
+  post_tasks:
+    - name: Test Apache service is running
+      service:
+        name: "{{ apache_service }}"
+        state: started
+      check_mode: yes
+      register: service_status
+
+    - name: Verify Apache responds to HTTP requests
+      uri:
+        url: "http://localhost:{{ apache_port }}"
+        method: GET
+        status_code: 200
+
+    - name: Check if custom configuration exists
+      stat:
+        path: "{{ apache_config_dir }}/custom.conf"
+      register: config_file
+      when: ansible_os_family == "RedHat"
+
+    - name: Verify configuration file exists
+      assert:
+        that:
+          - config_file.stat.exists
+        fail_msg: "Custom Apache configuration file not found"
+      when: ansible_os_family == "RedHat"
