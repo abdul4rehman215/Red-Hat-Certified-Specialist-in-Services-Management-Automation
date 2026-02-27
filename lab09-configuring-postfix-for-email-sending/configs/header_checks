@@ -1,0 +1,6 @@
+# Remove sensitive information from headers
+/^Received: from .*\[(192\.168\.|10\.|172\.1[6-9]\.|172\.2[0-9]\.|172\.3[0-1]\.)/
+ REPLACE Received: from localhost
+/^X-Originating-IP:/ IGNORE
+/^X-Mailer:/ IGNORE
+/^User-Agent:/ IGNORE
