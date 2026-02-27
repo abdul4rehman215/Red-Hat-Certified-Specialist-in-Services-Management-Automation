@@ -1,0 +1,637 @@
+Lab 12 - MariaDB Installation and Configuration
+Execution Output Log
+Environment: Ubuntu 24.04.1 LTS (Cloud lab environment)
+User: toor
+Host: ip-172-31-10-214
+Prompt format: toor@ip-172-31-10-214:~$
+
+============================================================
+Task 1.1: Update System Packages
+============================================================
+
+toor@ip-172-31-10-214:~$ sudo apt update && sudo apt upgrade -y
+Hit:1 http://archive.ubuntu.com/ubuntu noble InRelease
+Hit:2 http://archive.ubuntu.com/ubuntu noble-updates InRelease
+Hit:3 http://archive.ubuntu.com/ubuntu noble-backports InRelease
+Hit:4 http://security.ubuntu.com/ubuntu noble-security InRelease
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+14 packages can be upgraded. Run 'apt list --upgradable' to see them.
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+Calculating upgrade... Done
+The following packages will be upgraded:
+  curl libcurl4 openssl python3-update-manager ubuntu-release-upgrader-core
+  ubuntu-release-upgrader-gtk update-manager update-manager-core
+  xz-utils ...
+14 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+Need to get 18.7 MB of archives.
+After this operation, 1,024 kB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 openssl amd64 3.0.13-0ubuntu3.3 [1,207 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 curl amd64 8.5.0-2ubuntu10.2 [226 kB]
+...
+Fetched 18.7 MB in 3s (5,914 kB/s)
+(Reading database ... 92534 files and directories currently installed.)
+Preparing to unpack .../openssl_3.0.13-0ubuntu3.3_amd64.deb ...
+Unpacking openssl (3.0.13-0ubuntu3.3) over (3.0.13-0ubuntu3.2) ...
+Setting up openssl (3.0.13-0ubuntu3.3) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.3) ...
+
+============================================================
+Task 1.2: Install MariaDB Server
+============================================================
+
+toor@ip-172-31-10-214:~$ sudo apt install mariadb-server mariadb-client -y
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following additional packages will be installed:
+  galera-4 libmariadb3 mariadb-common mariadb-server-core mariadb-client-core
+  socat rsync
+Suggested packages:
+  mariadb-test
+The following NEW packages will be installed:
+  galera-4 libmariadb3 mariadb-client mariadb-client-core mariadb-common
+  mariadb-server mariadb-server-core rsync socat
+0 upgraded, 9 newly installed, 0 to remove and 0 not upgraded.
+Need to get 19.4 MB of archives.
+After this operation, 184 MB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu noble/main amd64 mariadb-common all 1:10.11.6-0ubuntu0.24.04.1 [17.3 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble/main amd64 libmariadb3 amd64 1:10.11.6-0ubuntu0.24.04.1 [181 kB]
+...
+Setting up mariadb-common (1:10.11.6-0ubuntu0.24.04.1) ...
+Setting up mariadb-server (1:10.11.6-0ubuntu0.24.04.1) ...
+Created symlink /etc/systemd/system/multi-user.target.wants/mariadb.service → /usr/lib/systemd/system/mariadb.service.
+Processing triggers for man-db (2.12.0-4build2) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.3) ...
+
+============================================================
+Task 1.3: Start and Enable MariaDB Service
+============================================================
+
+toor@ip-172-31-10-214:~$ sudo systemctl start mariadb
+(no output)
+
+toor@ip-172-31-10-214:~$ sudo systemctl enable mariadb
+Synchronizing state of mariadb.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable mariadb
+Created symlink /etc/systemd/system/multi-user.target.wants/mariadb.service → /usr/lib/systemd/system/mariadb.service.
+
+toor@ip-172-31-10-214:~$ sudo systemctl status mariadb
+● mariadb.service - MariaDB 10.11.6 database server
+     Loaded: loaded (/usr/lib/systemd/system/mariadb.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-02-27 15:42:11 UTC; 8s ago
+       Docs: man:mariadbd(8)
+             https://mariadb.com/kb/en/library/systemd/
+    Process: 8421 ExecStartPre=/usr/bin/install -m 755 -o mysql -g root -d /var/run/mysqld (code=exited, status=0/SUCCESS)
+    Process: 8422 ExecStartPre=/bin/sh -c systemctl unset-environment _WSREP_START_POSITION (code=exited, status=0/SUCCESS)
+    Process: 8438 ExecStartPost=/bin/sh -c systemctl unset-environment _WSREP_START_POSITION (code=exited, status=0/SUCCESS)
+   Main PID: 8431 (mariadbd)
+     Status: "Taking your SQL requests now..."
+      Tasks: 9 (limit: 2221)
+     Memory: 140.3M
+        CPU: 1.189s
+     CGroup: /system.slice/mariadb.service
+             └─8431 /usr/sbin/mariadbd
+
+============================================================
+Task 1.4: Secure MariaDB Installation (mysql_secure_installation)
+============================================================
+
+toor@ip-172-31-10-214:~$ sudo mysql_secure_installation
+
+NOTE: RUNNING ALL PARTS OF THIS SCRIPT IS RECOMMENDED FOR ALL MariaDB
+      SERVERS IN PRODUCTION USE!  PLEASE READ EACH STEP CAREFULLY!
+
+Enter current password for root (enter for none):
+OK, successfully used password, moving on...
+
+Switch to unix_socket authentication [Y/n] n
+... skipping.
+
+Set root password? [Y/n] Y
+New password:
+Re-enter new password:
+Password updated successfully!
+Reloading privilege tables..
+ ... Success!
+
+Remove anonymous users? [Y/n] Y
+ ... Success!
+
+Disallow root login remotely? [Y/n] Y
+ ... Success!
+
+Remove test database and access to it? [Y/n] Y
+ - Dropping test database...
+ ... Success!
+ - Removing privileges on test database...
+ ... Success!
+
+Reload privilege tables now? [Y/n] Y
+ ... Success!
+
+Cleaning up...
+
+All done!  If you've completed all of the above steps, your MariaDB
+installation should now be secure.
+
+============================================================
+Task 1.5: Verify Root Login
+============================================================
+
+toor@ip-172-31-10-214:~$ mysql -u root -p
+Enter password:
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MariaDB connection id is 13
+Server version: 10.11.6-MariaDB-0ubuntu0.24.04.1 Ubuntu 24.04
+
+Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+MariaDB [(none)]> EXIT;
+Bye
+
+============================================================
+Task 2.1: Create Application Databases
+============================================================
+
+toor@ip-172-31-10-214:~$ mysql -u root -p
+Enter password:
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+MariaDB [(none)]>
+
+MariaDB [(none)]> CREATE DATABASE webapp_db;
+Query OK, 1 row affected (0.001 sec)
+
+MariaDB [(none)]> CREATE DATABASE inventory_db;
+Query OK, 1 row affected (0.001 sec)
+
+MariaDB [(none)]> CREATE DATABASE users_db;
+Query OK, 1 row affected (0.001 sec)
+
+MariaDB [(none)]> SHOW DATABASES;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| inventory_db       |
+| mysql              |
+| performance_schema |
+| sys                |
+| users_db           |
+| webapp_db          |
++--------------------+
+7 rows in set (0.000 sec)
+
+============================================================
+Task 2.2: Create Database Users
+============================================================
+
+MariaDB [(none)]> CREATE USER 'webapp_user'@'localhost' IDENTIFIED BY 'WebApp2024!';
+Query OK, 0 rows affected (0.002 sec)
+
+MariaDB [(none)]> CREATE USER 'inventory_user'@'localhost' IDENTIFIED BY 'Inventory2024!';
+Query OK, 0 rows affected (0.001 sec)
+
+MariaDB [(none)]> CREATE USER 'report_user'@'localhost' IDENTIFIED BY 'Report2024!';
+Query OK, 0 rows affected (0.001 sec)
+
+MariaDB [(none)]> CREATE USER 'backup_user'@'localhost' IDENTIFIED BY 'Backup2024!';
+Query OK, 0 rows affected (0.001 sec)
+
+MariaDB [(none)]> SELECT User, Host FROM mysql.user;
++---------------+-----------+
+| User          | Host      |
++---------------+-----------+
+| backup_user   | localhost |
+| mariadb.sys   | localhost |
+| mysql         | localhost |
+| report_user   | localhost |
+| root          | localhost |
+| webapp_user   | localhost |
+| inventory_user| localhost |
++---------------+-----------+
+7 rows in set (0.001 sec)
+
+============================================================
+Task 2.3: Grant Specific Permissions
+============================================================
+
+MariaDB [(none)]> GRANT ALL PRIVILEGES ON webapp_db.* TO 'webapp_user'@'localhost';
+Query OK, 0 rows affected (0.002 sec)
+
+MariaDB [(none)]> GRANT ALL PRIVILEGES ON inventory_db.* TO 'inventory_user'@'localhost';
+Query OK, 0 rows affected (0.002 sec)
+
+MariaDB [(none)]> GRANT SELECT ON webapp_db.* TO 'report_user'@'localhost';
+Query OK, 0 rows affected (0.001 sec)
+
+MariaDB [(none)]> GRANT SELECT ON inventory_db.* TO 'report_user'@'localhost';
+Query OK, 0 rows affected (0.001 sec)
+
+MariaDB [(none)]> GRANT SELECT ON users_db.* TO 'report_user'@'localhost';
+Query OK, 0 rows affected (0.001 sec)
+
+MariaDB [(none)]> GRANT SELECT, LOCK TABLES, SHOW VIEW ON *.* TO 'backup_user'@'localhost';
+Query OK, 0 rows affected (0.002 sec)
+
+MariaDB [(none)]> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0.001 sec)
+
+============================================================
+Task 2.4: Create Sample Tables and Data
+============================================================
+
+MariaDB [(none)]> USE webapp_db;
+Database changed
+
+MariaDB [webapp_db]> CREATE TABLE users (
+    ->  id INT AUTO_INCREMENT PRIMARY KEY,
+    ->  username VARCHAR(50) NOT NULL,
+    ->  email VARCHAR(100) NOT NULL,
+    ->  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -> );
+Query OK, 0 rows affected (0.012 sec)
+
+MariaDB [webapp_db]> INSERT INTO users (username, email) VALUES
+    -> ('john_doe', 'john@example.com'),
+    -> ('jane_smith', 'jane@example.com'),
+    -> ('admin_user', 'admin@example.com');
+Query OK, 3 rows affected (0.004 sec)
+Records: 3  Duplicates: 0  Warnings: 0
+
+MariaDB [webapp_db]> USE inventory_db;
+Database changed
+
+MariaDB [inventory_db]> CREATE TABLE products (
+    ->  id INT AUTO_INCREMENT PRIMARY KEY,
+    ->  product_name VARCHAR(100) NOT NULL,
+    ->  quantity INT NOT NULL,
+    ->  price DECIMAL(10,2) NOT NULL,
+    ->  category VARCHAR(50)
+    -> );
+Query OK, 0 rows affected (0.013 sec)
+
+MariaDB [inventory_db]> INSERT INTO products (product_name, quantity, price, category) VALUES
+    -> ('Laptop', 25, 999.99, 'Electronics'),
+    -> ('Mouse', 100, 29.99, 'Electronics'),
+    -> ('Desk Chair', 15, 199.99, 'Furniture');
+Query OK, 3 rows affected (0.003 sec)
+Records: 3  Duplicates: 0  Warnings: 0
+
+MariaDB [inventory_db]> EXIT;
+Bye
+
+============================================================
+Task 3.1: Test webapp_user Permissions
+============================================================
+
+toor@ip-172-31-10-214:~$ mysql -u webapp_user -p
+Enter password:
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+MariaDB [(none)]>
+
+MariaDB [(none)]> USE webapp_db;
+Database changed
+
+MariaDB [webapp_db]> SELECT * FROM users;
++----+------------+-------------------+---------------------+
+| id | username   | email             | created_at          |
++----+------------+-------------------+---------------------+
+|  1 | john_doe   | john@example.com  | 2026-02-27 15:48:19 |
+|  2 | jane_smith | jane@example.com  | 2026-02-27 15:48:19 |
+|  3 | admin_user | admin@example.com | 2026-02-27 15:48:19 |
++----+------------+-------------------+---------------------+
+3 rows in set (0.000 sec)
+
+MariaDB [webapp_db]> INSERT INTO users (username, email) VALUES ('test_user', 'test@example.com');
+Query OK, 1 row affected (0.002 sec)
+
+MariaDB [webapp_db]> UPDATE users SET email = 'newemail@example.com' WHERE username = 'test_user';
+Query OK, 1 row affected (0.002 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+MariaDB [webapp_db]> DELETE FROM users WHERE username = 'test_user';
+Query OK, 1 row affected (0.002 sec)
+
+MariaDB [webapp_db]> USE inventory_db;
+ERROR 1044 (42000): Access denied for user 'webapp_user'@'localhost' to database 'inventory_db'
+
+MariaDB [webapp_db]> EXIT;
+Bye
+
+============================================================
+Task 3.2: Test report_user (Read-Only)
+============================================================
+
+toor@ip-172-31-10-214:~$ mysql -u report_user -p
+Enter password:
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+MariaDB [(none)]>
+
+MariaDB [(none)]> USE webapp_db;
+Database changed
+
+MariaDB [webapp_db]> SELECT * FROM users;
++----+------------+-------------------+---------------------+
+| id | username   | email             | created_at          |
++----+------------+-------------------+---------------------+
+|  1 | john_doe   | john@example.com  | 2026-02-27 15:48:19 |
+|  2 | jane_smith | jane@example.com  | 2026-02-27 15:48:19 |
+|  3 | admin_user | admin@example.com | 2026-02-27 15:48:19 |
++----+------------+-------------------+---------------------+
+3 rows in set (0.000 sec)
+
+MariaDB [webapp_db]> USE inventory_db;
+Database changed
+
+MariaDB [inventory_db]> SELECT * FROM products;
++----+--------------+----------+--------+-------------+
+| id | product_name | quantity | price  | category    |
++----+--------------+----------+--------+-------------+
+|  1 | Laptop       |       25 | 999.99 | Electronics |
+|  2 | Mouse        |      100 |  29.99 | Electronics |
+|  3 | Desk Chair   |       15 | 199.99 | Furniture   |
++----+--------------+----------+--------+-------------+
+3 rows in set (0.000 sec)
+
+MariaDB [inventory_db]> INSERT INTO products (product_name, quantity, price, category)
+    -> VALUES ('Test Product', 1, 1.00, 'Test');
+ERROR 1142 (42000): INSERT command denied to user 'report_user'@'localhost' for table 'products'
+
+MariaDB [inventory_db]> EXIT;
+Bye
+
+============================================================
+Task 3.3: Test inventory_user Permissions
+============================================================
+
+toor@ip-172-31-10-214:~$ mysql -u inventory_user -p
+Enter password:
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+MariaDB [(none)]>
+
+MariaDB [(none)]> USE inventory_db;
+Database changed
+
+MariaDB [inventory_db]> SELECT * FROM products;
++----+--------------+----------+--------+-------------+
+| id | product_name | quantity | price  | category    |
++----+--------------+----------+--------+-------------+
+|  1 | Laptop       |       25 | 999.99 | Electronics |
+|  2 | Mouse        |      100 |  29.99 | Electronics |
+|  3 | Desk Chair   |       15 | 199.99 | Furniture   |
++----+--------------+----------+--------+-------------+
+3 rows in set (0.000 sec)
+
+MariaDB [inventory_db]> INSERT INTO products (product_name, quantity, price, category)
+    -> VALUES ('Keyboard', 50, 79.99, 'Electronics');
+Query OK, 1 row affected (0.002 sec)
+
+MariaDB [inventory_db]> UPDATE products SET quantity = 45 WHERE product_name = 'Keyboard';
+Query OK, 1 row affected (0.002 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+MariaDB [inventory_db]> USE webapp_db;
+ERROR 1044 (42000): Access denied for user 'inventory_user'@'localhost' to database 'webapp_db'
+
+MariaDB [inventory_db]> EXIT;
+Bye
+
+============================================================
+Task 3.4: Connection Test Script (test_connections.sh)
+============================================================
+
+toor@ip-172-31-10-214:~$ chmod +x test_connections.sh
+(no output)
+
+toor@ip-172-31-10-214:~$ ./test_connections.sh
+=== MariaDB Connection Test Script ===
+
+Testing root connection...
+Enter password:
++---------------------------+
+| Status                    |
++---------------------------+
+| Root connection successful|
++---------------------------+
+
+Testing webapp_user connection...
++------------+
+| user_count |
++------------+
+|          3 |
++------------+
+
+Testing report_user connection...
++------------------------+
+| Status                 |
++------------------------+
+| Read-only access working |
++------------------------+
+
+Testing inventory_user connection...
++---------------+
+| product_count |
++---------------+
+|             4 |
++---------------+
+
+=== Connection tests completed ===
+
+============================================================
+Task 3.5: Monitor Database Activity and Privileges
+============================================================
+
+toor@ip-172-31-10-214:~$ mysql -u root -p
+Enter password:
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+MariaDB [(none)]>
+
+MariaDB [(none)]> SHOW PROCESSLIST;
++----+------+-----------+------+---------+------+------------------------+------------------+----------+
+| Id | User | Host      | db   | Command | Time | State                  | Info             | Progress |
++----+------+-----------+------+---------+------+------------------------+------------------+----------+
+| 25 | root | localhost | NULL | Query   |    0 | starting               | SHOW PROCESSLIST |    0.000 |
++----+------+-----------+------+---------+------+------------------------+------------------+----------+
+1 row in set (0.000 sec)
+
+MariaDB [(none)]> SELECT USER, HOST, DB, COMMAND, TIME, STATE
+    -> FROM INFORMATION_SCHEMA.PROCESSLIST
+    -> WHERE USER != 'system user';
++------+-----------+------+---------+------+----------+
+| USER | HOST      | DB   | COMMAND | TIME | STATE    |
++------+-----------+------+---------+------+----------+
+| root | localhost | NULL | Query   |    0 | starting |
++------+-----------+------+---------+------+----------+
+1 row in set (0.000 sec)
+
+MariaDB [(none)]> SHOW GRANTS FOR 'webapp_user'@'localhost';
++------------------------------------------------------------------------------------------------------------------+
+| Grants for webapp_user@localhost                                                                                  |
++------------------------------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `webapp_user`@`localhost` IDENTIFIED BY PASSWORD '*...REDACTED...'                          |
+| GRANT ALL PRIVILEGES ON `webapp_db`.* TO `webapp_user`@`localhost`                                                |
++------------------------------------------------------------------------------------------------------------------+
+2 rows in set (0.000 sec)
+
+MariaDB [(none)]> SHOW GRANTS FOR 'report_user'@'localhost';
++------------------------------------------------------------------------------------------------------------------+
+| Grants for report_user@localhost                                                                                  |
++------------------------------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `report_user`@`localhost` IDENTIFIED BY PASSWORD '*...REDACTED...'                          |
+| GRANT SELECT ON `webapp_db`.* TO `report_user`@`localhost`                                                        |
+| GRANT SELECT ON `inventory_db`.* TO `report_user`@`localhost`                                                     |
+| GRANT SELECT ON `users_db`.* TO `report_user`@`localhost`                                                         |
++------------------------------------------------------------------------------------------------------------------+
+4 rows in set (0.000 sec)
+
+MariaDB [(none)]> SHOW GRANTS FOR 'inventory_user'@'localhost';
++------------------------------------------------------------------------------------------------------------------+
+| Grants for inventory_user@localhost                                                                               |
++------------------------------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `inventory_user`@`localhost` IDENTIFIED BY PASSWORD '*...REDACTED...'                       |
+| GRANT ALL PRIVILEGES ON `inventory_db`.* TO `inventory_user`@`localhost`                                          |
++------------------------------------------------------------------------------------------------------------------+
+2 rows in set (0.000 sec)
+
+MariaDB [(none)]> EXIT;
+Bye
+
+============================================================
+Task 3.6: Remote Access (Optional)
+============================================================
+
+toor@ip-172-31-10-214:~$ sudo nano /etc/mysql/mariadb.conf.d/50-server.cnf
+(Bind address updated and saved.)
+
+toor@ip-172-31-10-214:~$ sudo systemctl restart mariadb
+(no output)
+
+toor@ip-172-31-10-214:~$ mysql -u root -p
+Enter password:
+MariaDB [(none)]>
+
+MariaDB [(none)]> CREATE USER 'remote_user'@'%' IDENTIFIED BY 'RemotePass2024!';
+Query OK, 0 rows affected (0.002 sec)
+
+MariaDB [(none)]> GRANT SELECT ON webapp_db.* TO 'remote_user'@'%';
+Query OK, 0 rows affected (0.001 sec)
+
+MariaDB [(none)]> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0.001 sec)
+
+MariaDB [(none)]> EXIT;
+Bye
+
+============================================================
+Task 3.7: Firewall Configuration (Optional)
+============================================================
+
+toor@ip-172-31-10-214:~$ sudo ufw allow 3306/tcp
+Rules updated
+Rules updated (v6)
+
+============================================================
+Troubleshooting: MariaDB Service Logs
+============================================================
+
+toor@ip-172-31-10-214:~$ sudo journalctl -u mariadb --no-pager -n 10
+Feb 27 15:42:10 ip-172-31-10-214 systemd[1]: Starting mariadb.service - MariaDB 10.11.6 database server...
+Feb 27 15:42:11 ip-172-31-10-214 mariadbd[8431]: 2026-02-27 15:42:11 0 [Note] /usr/sbin/mariadbd: ready for connections.
+Feb 27 15:42:11 ip-172-31-10-214 systemd[1]: Started mariadb.service - MariaDB 10.11.6 database server.
+Feb 27 15:52:41 ip-172-31-10-214 systemd[1]: Stopping mariadb.service - MariaDB 10.11.6 database server...
+Feb 27 15:52:41 ip-172-31-10-214 systemd[1]: mariadb.service: Deactivated successfully.
+Feb 27 15:52:41 ip-172-31-10-214 systemd[1]: Stopped mariadb.service - MariaDB 10.11.6 database server.
+Feb 27 15:52:41 ip-172-31-10-214 systemd[1]: Starting mariadb.service - MariaDB 10.11.6 database server...
+Feb 27 15:52:42 ip-172-31-10-214 systemd[1]: Started mariadb.service - MariaDB 10.11.6 database server.
+
+============================================================
+Troubleshooting: Port 3306 Check (netstat missing -> install net-tools)
+============================================================
+
+toor@ip-172-31-10-214:~$ sudo netstat -tlnp | grep 3306
+sudo: netstat: command not found
+
+toor@ip-172-31-10-214:~$ sudo apt install net-tools -y
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following NEW packages will be installed:
+  net-tools
+0 upgraded, 1 newly installed, 0 to remove and 0 not upgraded.
+Setting up net-tools (2.10-0.1ubuntu4) ...
+
+toor@ip-172-31-10-214:~$ sudo netstat -tlnp | grep 3306
+tcp        0      0 0.0.0.0:3306            0.0.0.0:*               LISTEN      8431/mariadbd
+
+============================================================
+Troubleshooting: Verify Users Exist
+============================================================
+
+toor@ip-172-31-10-214:~$ mysql -u root -p -e "SELECT User, Host FROM mysql.user;"
+Enter password:
+User            Host
+backup_user     localhost
+inventory_user  localhost
+mariadb.sys     localhost
+mysql           localhost
+remote_user     %
+report_user     localhost
+root            localhost
+webapp_user     localhost
+
+============================================================
+Troubleshooting: Quick Service Status Check
+============================================================
+
+toor@ip-172-31-10-214:~$ sudo systemctl status mariadb | head -n 8
+● mariadb.service - MariaDB 10.11.6 database server
+     Loaded: loaded (/usr/lib/systemd/system/mariadb.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-02-27 15:52:42 UTC; 1min 12s ago
+       Docs: man:mariadbd(8)
+    Process: 9123 ExecStartPre=/usr/bin/install -m 755 -o mysql -g root -d /var/run/mysqld (code=exited, status=0/SUCCESS)
+   Main PID: 9131 (mariadbd)
+     Status: "Taking your SQL requests now..."
+
+============================================================
+Performance Optimization: Verify max_connections
+============================================================
+
+toor@ip-172-31-10-214:~$ sudo nano /etc/mysql/mariadb.conf.d/50-server.cnf
+(Optimizations added and saved.)
+
+toor@ip-172-31-10-214:~$ sudo systemctl restart mariadb
+(no output)
+
+toor@ip-172-31-10-214:~$ mysql -u root -p -e "SHOW VARIABLES LIKE 'max_connections';"
+Enter password:
+Variable_name   Value
+max_connections 200
+
+============================================================
+Backup and Recovery: backup_databases.sh
+============================================================
+
+toor@ip-172-31-10-214:~$ chmod +x backup_databases.sh
+(no output)
+
+toor@ip-172-31-10-214:~$ ./backup_databases.sh
+Backup completed: 20260227_155948
+
+toor@ip-172-31-10-214:~$ sudo ls -lh /var/backups/mysql | tail -n 5
+-rw-r--r-- 1 root root  1.6M Feb 27 15:59 all_databases_20260227_155948.sql
+-rw-r--r-- 1 root root   14K Feb 27 15:59 inventory_db_20260227_155948.sql
+-rw-r--r-- 1 root root   13K Feb 27 15:59 webapp_db_20260227_155948.sql
+
+============================================================
+Lab Completed Successfully
+============================================================
+Files created in this lab:
+- test_connections.sh
+- backup_databases.sh
