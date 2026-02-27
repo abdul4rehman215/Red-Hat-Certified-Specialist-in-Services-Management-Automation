@@ -1,0 +1,61 @@
+---
+- name: Test Firewall Configuration
+  hosts: all
+  become: yes
+  vars:
+    test_results: []
+
+  tasks:
+    - name: Verify firewalld service status
+      systemd:
+        name: firewalld
+      register: firewalld_status
+
+    - name: Display firewalld status
+      debug:
+        msg: "Firewalld is {{ firewalld_status.status.ActiveState }}"
+
+    - name: Get current firewall zones
+      command: firewall-cmd --get-zones
+      register: current_zones
+      changed_when: false
+
+    - name: Display configured zones
+      debug:
+        msg: "Configured zones: {{ current_zones.stdout }}"
+
+    - name: Get default zone
+      command: firewall-cmd --get-default-zone
+      register: default_zone
+      changed_when: false
+
+    - name: Display default zone
+      debug:
+        msg: "Default zone: {{ default_zone.stdout }}"
+
+    - name: List services in public zone
+      command: firewall-cmd --zone=public --list-services
+      register: public_services
+      changed_when: false
+
+    - name: Display public zone services
+      debug:
+        msg: "Public zone services: {{ public_services.stdout }}"
+
+    - name: List ports in public zone
+      command: firewall-cmd --zone=public --list-ports
+      register: public_ports
+      changed_when: false
+
+    - name: Display public zone ports
+      debug:
+        msg: "Public zone ports: {{ public_ports.stdout }}"
+
+    - name: Check rich rules
+      command: firewall-cmd --list-rich-rules
+      register: rich_rules
+      changed_when: false
+
+    - name: Display rich rules
+      debug:
+        msg: "Rich rules: {{ rich_rules.stdout_lines }}"
