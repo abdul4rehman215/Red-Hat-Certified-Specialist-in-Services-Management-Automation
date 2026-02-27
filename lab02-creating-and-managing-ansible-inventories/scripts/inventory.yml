@@ -1,0 +1,66 @@
+---
+all:
+  children:
+    webservers:
+      hosts:
+        web01:
+          ansible_host: 10.0.1.10
+          ansible_user: webadmin
+          http_port: 80
+          server_role: frontend
+        web02:
+          ansible_host: 10.0.1.11
+          ansible_user: webadmin
+          http_port: 80
+          server_role: frontend
+        web03:
+          ansible_host: 10.0.1.12
+          ansible_user: webadmin
+          http_port: 8080
+          server_role: api
+      vars:
+        ansible_ssh_private_key_file: /home/ansible/.ssh/web_key
+        environment: production
+        app_version: "2.1.0"
+
+    databases:
+      hosts:
+        db01:
+          ansible_host: 10.0.2.10
+          ansible_user: dbadmin
+          mysql_port: 3306
+          db_role: master
+        db02:
+          ansible_host: 10.0.2.11
+          ansible_user: dbadmin
+          mysql_port: 3306
+          db_role: slave
+      vars:
+        ansible_ssh_private_key_file: /home/ansible/.ssh/db_key
+        backup_schedule: daily
+        mysql_version: "8.0"
+
+    loadbalancers:
+      hosts:
+        lb01:
+          ansible_host: 10.0.3.10
+          ansible_user: lbadmin
+          lb_algorithm: round_robin
+
+    monitoring:
+      hosts:
+        monitor01:
+          ansible_host: 10.0.4.10
+          ansible_user: monitor
+          monitoring_tools: ["nagios", "grafana"]
+
+    production:
+      children:
+        webservers:
+        databases:
+        loadbalancers:
+        monitoring:
+      vars:
+        datacenter: us-east-1
+        backup_retention: 30
+        security_level: high
