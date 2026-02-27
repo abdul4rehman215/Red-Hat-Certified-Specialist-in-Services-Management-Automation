@@ -1,0 +1,10 @@
+[Service]
+# Dynamic resource limits based on system capacity
+CPUQuota={{ resource_profiles[profile].cpu_quota }}
+MemoryMax={{ resource_profiles[profile].memory_max }}
+TasksMax={{ resource_profiles[profile].tasks_max }}
+IOWeight={{ resource_profiles[profile].io_weight }}
+
+# Additional limits
+LimitNOFILE=1024
+LimitNPROC=512
