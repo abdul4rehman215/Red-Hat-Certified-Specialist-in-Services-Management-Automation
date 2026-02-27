@@ -1,0 +1,26 @@
+[Unit]
+Description=Resource Test Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/testservice/resource-test.sh
+Restart=always
+RestartSec=10
+User=nobody
+Group=nobody
+
+# Resource Limits
+CPUQuota=50%
+MemoryMax=100M
+TasksMax=10
+IOWeight=100
+
+# Additional resource controls
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes
+IOAccounting=yes
+
+[Install]
+WantedBy=multi-user.target
