@@ -1,0 +1,29 @@
+[Unit]
+Description=Custom Python Web Server
+Documentation=https://docs.python.org/3/library/http.server.html
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=nobody
+Group=nobody
+WorkingDirectory=/tmp
+ExecStart=/usr/bin/python3 /home/centos/systemd-lab/scripts/simple-webserver.py
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/tmp
+
+[Install]
+WantedBy=multi-user.target
