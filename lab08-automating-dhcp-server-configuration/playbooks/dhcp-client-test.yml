@@ -1,0 +1,50 @@
+---
+- name: Test DHCP Client Functionality
+  hosts: dhcp_clients
+  become: yes
+  tasks:
+    - name: Install DHCP client tools
+      yum:
+        name:
+          - dhcp-client
+          - net-tools
+        state: present
+
+    - name: Release current IP address
+      shell: dhclient -r
+      ignore_errors: yes
+
+    - name: Request new IP address from DHCP server
+      shell: dhclient -v
+      register: dhcp_request
+      ignore_errors: yes
+
+    - name: Display DHCP request result
+      debug:
+        msg: "{{ dhcp_request.stderr_lines }}"
+
+    - name: Check current IP configuration
+      shell: ip addr show | grep -A 2 "inet "
+      register: ip_config
+
+    - name: Display current IP configuration
+      debug:
+        msg: "{{ ip_config.stdout_lines }}"
+
+    - name: Test connectivity to DHCP server
+      shell: ping -c 3 {{ hostvars[groups['dhcp_servers'][0]]['ansible_host'] }}
+      register: ping_test
+      ignore_errors: yes
+
+    - name: Display ping test results
+      debug:
+        msg: "Ping test {{ 'successful' if ping_test.rc == 0 else 'failed' }}"
+
+    - name: Check DNS resolution
+      shell: nslookup google.com
+      register: dns_test
+      ignore_errors: yes
+
+    - name: Display DNS test results
+      debug:
+        msg: "DNS resolution {{ 'working' if dns_test.rc == 0 else 'failed' }}"
