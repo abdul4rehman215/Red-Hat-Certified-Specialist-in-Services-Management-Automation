@@ -1,0 +1,27 @@
+---
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-east-1
+  - us-west-2
+
+keyed_groups:
+  # Create groups based on instance tags
+  - key: tags.Environment
+    prefix: env
+  - key: tags.Application
+    prefix: app
+  - key: instance_type
+    prefix: type
+  - key: placement.availability_zone
+    prefix: az
+
+compose:
+  # Set ansible_host to public IP if available, otherwise private IP
+  ansible_host: public_ip_address | default(private_ip_address)
+  ec2_instance_type: instance_type
+  ec2_placement_az: placement.availability_zone
+  ec2_state: state.name
+
+filters:
+  # Only include running instances
+  instance-state-name: running
