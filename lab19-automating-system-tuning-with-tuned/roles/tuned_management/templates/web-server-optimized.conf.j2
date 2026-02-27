@@ -1,0 +1,35 @@
+#
+# Custom tuned profile for web server optimization
+# Managed by Ansible
+#
+[main]
+summary=Optimized profile for web server workloads
+include=throughput-performance
+
+[sysctl]
+# Network optimizations
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.ipv4.tcp_rmem = 4096 87380 16777216
+net.ipv4.tcp_wmem = 4096 65536 16777216
+net.ipv4.tcp_congestion_control = bbr
+net.core.netdev_max_backlog = 5000
+
+# Memory optimizations for web workloads
+vm.swappiness = 10
+vm.dirty_ratio = 15
+vm.dirty_background_ratio = 5
+
+# File system optimizations
+fs.file-max = 2097152
+{% if web_tuning is defined %}
+fs.nr_open = {{ web_tuning.max_connections * 10 }}
+{% endif %}
+
+[cpu]
+governor = performance
+energy_perf_bias = performance
+
+[disk]
+# Optimize for web server I/O patterns
+elevator = mq-deadline
