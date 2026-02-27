@@ -1,0 +1,103 @@
+---
+- name: MariaDB Database Backup Automation
+  hosts: database_servers
+  become: yes
+  vars:
+    backup_dir: "/opt/mariadb-backups"
+    backup_retention_days: 7
+    mysql_root_password: ""
+    databases_to_backup:
+      - company_db
+      - inventory_db
+      - users_db
+    backup_timestamp: "{{ ansible_date_time.year }}{{ ansible_date_time.month }}{{ ansible_date_time.day }}_{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}{{ ansible_date_time.second }}"
+
+  tasks:
+    - name: Create backup directory
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Create daily backup subdirectory
+      file:
+        path: "{{ backup_dir }}/{{ ansible_date_time.date }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Install required packages
+      package:
+        name:
+          - mariadb-client
+          - gzip
+        state: present
+
+    - name: Check MariaDB service status
+      systemd:
+        name: mariadb
+        state: started
+      register: mariadb_status
+
+    - name: Fail if MariaDB is not running
+      fail:
+        msg: "MariaDB service is not running"
+      when: mariadb_status.state != "started"
+
+    - name: Create individual database backups
+      shell: |
+        mysqldump --single-transaction --routines --triggers \
+          -u root {{ '-p' + mysql_root_password if mysql_root_password else '' }} \
+          {{ item }} | gzip > {{ backup_dir }}/{{ ansible_date_time.date }}/{{ item }}_{{ backup_timestamp }}.sql.gz
+      loop: "{{ databases_to_backup }}"
+      register: backup_results
+      failed_when: backup_results.rc != 0
+
+    - name: Create full database backup (all databases)
+      shell: |
+        mysqldump --single-transaction --routines --triggers --all-databases \
+          -u root {{ '-p' + mysql_root_password if mysql_root_password else '' }} \
+          | gzip > {{ backup_dir }}/{{ ansible_date_time.date }}/full_backup_{{ backup_timestamp }}.sql.gz
+      register: full_backup_result
+      failed_when: full_backup_result.rc != 0
+
+    - name: Verify backup files exist and have content
+      stat:
+        path: "{{ backup_dir }}/{{ ansible_date_time.date }}/{{ item }}_{{ backup_timestamp }}.sql.gz"
+      loop: "{{ databases_to_backup }}"
+      register: backup_file_stats
+      failed_when: not backup_file_stats.stat.exists or backup_file_stats.stat.size == 0
+
+    - name: Create backup log entry
+      lineinfile:
+        path: "{{ backup_dir }}/backup.log"
+        line: "{{ ansible_date_time.iso8601 }} - Backup completed successfully for databases: {{ databases_to_backup | join(', ') }}"
+        create: yes
+        mode: '0644'
+
+    - name: Remove old backups (retention policy)
+      find:
+        paths: "{{ backup_dir }}"
+        age: "{{ backup_retention_days }}d"
+        recurse: yes
+        file_type: directory
+      register: old_backups
+
+    - name: Delete old backup directories
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_backups.files }}"
+      when: old_backups.files is defined
+
+    - name: Display backup summary
+      debug:
+        msg: |
+          Backup Summary:
+          - Backup Location: {{ backup_dir }}/{{ ansible_date_time.date }}
+          - Databases Backed Up: {{ databases_to_backup | join(', ') }}
+          - Backup Timestamp: {{ backup_timestamp }}
+          - Full Backup: full_backup_{{ backup_timestamp }}.sql.gz
