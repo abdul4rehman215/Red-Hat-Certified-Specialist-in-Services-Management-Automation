@@ -1,0 +1,120 @@
+---
+- name: Test Apache HTTP Server Installation and Configuration
+  hosts: webservers
+  become: yes
+  vars_files:
+    - ../vars/vhosts.yml
+  vars:
+    apache_service_name: httpd
+    test_results: []
+
+  tasks:
+    - name: Check Apache service status
+      systemd:
+        name: "{{ apache_service_name }}"
+      register: apache_status
+      tags: service_check
+
+    - name: Display Apache service status
+      debug:
+        msg: |
+          Apache Service Status:
+          - Active: {{ apache_status.status.ActiveState }}
+          - Loaded: {{ apache_status.status.LoadState }}
+          - Running: {{ apache_status.status.SubState }}
+      tags: service_check
+
+    - name: Check if Apache is listening on ports 80 and 443
+      wait_for:
+        port: "{{ item }}"
+        host: "{{ ansible_default_ipv4.address }}"
+        timeout: 10
+      loop:
+        - 80
+        - 443
+      register: port_check
+      tags: port_check
+
+    - name: Test HTTP connectivity to default site
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        method: GET
+        status_code: 200
+      register: http_test
+      tags: http_test
+
+    - name: Test virtual hosts HTTP connectivity
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        method: GET
+        headers:
+          Host: "{{ item.server_name }}"
+        status_code: [200, 301, 302]
+      loop: "{{ virtual_hosts }}"
+      register: vhost_http_test
+      tags: vhost_test
+
+    - name: Test HTTPS connectivity for SSL-enabled virtual hosts
+      uri:
+        url: "https://{{ ansible_default_ipv4.address }}"
+        method: GET
+        headers:
+          Host: "{{ item.server_name }}"
+        validate_certs: no
+        status_code: 200
+      loop: "{{ virtual_hosts }}"
+      when: item.ssl_enabled is defined and item.ssl_enabled
+      register: vhost_https_test
+      tags: https_test
+
+    - name: Test custom error pages
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}/nonexistent-page"
+        method: GET
+        status_code: 404
+      register: error_page_test
+      tags: error_test
+
+    - name: Check SSL certificate validity
+      openssl_certificate_info:
+        path: "{{ item.ssl_cert_path }}"
+      loop: "{{ virtual_hosts }}"
+      when: item.ssl_enabled is defined and item.ssl_enabled
+      register: ssl_cert_info
+      tags: ssl_check
+
+    - name: Display SSL certificate information
+      debug:
+        msg: |
+          Certificate for {{ item.item.server_name }}:
+          - Subject: {{ item.subject }}
+          - Issuer: {{ item.issuer }}
+          - Valid from: {{ item.not_before }}
+          - Valid until: {{ item.not_after }}
+          - Serial: {{ item.serial_number }}
+      loop: "{{ ssl_cert_info.results }}"
+      when: ssl_cert_info is defined and not item.skipped | default(false)
+      tags: ssl_check
+
+    - name: Check Apache configuration syntax
+      command: httpd -t
+      register: config_syntax
+      changed_when: false
+      tags: syntax_check
+
+    - name: Display configuration syntax check
+      debug:
+        msg: |
+          Apache Configuration Syntax Check:
+          {{ config_syntax.stdout }}
+          {{ config_syntax.stderr }}
+      tags: syntax_check
+
+    - name: Generate test report
+      template:
+        src: ../templates/test-report.html.j2
+        dest: /var/www/html/test-report.html
+        owner: apache
+        group: apache
+        mode: '0644'
+      tags: test_report
