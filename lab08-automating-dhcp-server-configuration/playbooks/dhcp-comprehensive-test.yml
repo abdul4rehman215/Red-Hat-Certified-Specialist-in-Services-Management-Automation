@@ -1,0 +1,60 @@
+---
+- name: Comprehensive DHCP Testing
+  hosts: localhost
+  gather_facts: no
+  vars:
+    test_results: []
+
+  tasks:
+    - name: Test DHCP server configuration
+      include_tasks: test-dhcp-server.yml
+
+    - name: Test client IP assignment
+      include_tasks: test-client-assignment.yml
+
+    - name: Generate test report
+      template:
+        src: test-report.j2
+        dest: ./dhcp-test-report.html
+        mode: '0644'
+
+- name: DHCP Server Configuration Tests
+  hosts: dhcp_servers
+  become: yes
+  tasks:
+    - name: Verify DHCP service is running
+      systemd:
+        name: dhcpd
+      register: service_status
+
+    - name: Check configuration file syntax
+      shell: dhcpd -t -cf /etc/dhcp/dhcpd.conf
+      register: config_syntax
+
+    - name: Verify firewall configuration
+      shell: firewall-cmd --list-services | grep dhcp
+      register: firewall_status
+
+    - name: Check listening ports
+      shell: netstat -ulnp | grep :67
+      register: port_status
+
+- name: DHCP Client Assignment Tests
+  hosts: dhcp_clients
+  become: yes
+  tasks:
+    - name: Test DHCP lease acquisition
+      shell: |
+        dhclient -r
+        sleep 2
+        dhclient -v 2>&1
+      register: lease_test
+
+    - name: Verify IP assignment
+      shell: ip addr show | grep "inet " | grep -v "127.0.0.1"
+      register: ip_assignment
+
+    - name: Test gateway connectivity
+      shell: ping -c 3 $(ip route | grep default | awk '{print $3}')
+      register: gateway_test
+      ignore_errors: yes
