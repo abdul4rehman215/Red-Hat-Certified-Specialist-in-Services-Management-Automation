@@ -1,0 +1,17 @@
+[Unit]
+Description=System Cleanup Task
+Documentation=Custom cleanup service for temporary files
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/home/centos/systemd-lab/scripts/system-cleanup.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=system-cleanup
+# Security settings
+NoNewPrivileges=true
+PrivateNetwork=true
+ProtectSystem=strict
+ReadWritePaths=/tmp /var/log
