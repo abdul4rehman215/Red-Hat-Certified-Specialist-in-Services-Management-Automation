@@ -1,0 +1,58 @@
+---
+- name: Deploy Web Infrastructure
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # Environment-specific variables
+    environment_name: "production"
+    company_name: "Al Nafi Tech Solutions"
+
+  pre_tasks:
+    - name: Update package cache (RedHat/CentOS)
+      yum:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: Update package cache (Ubuntu/Debian)
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+  roles:
+    - role: apache-role
+      vars:
+        apache_admin_email: "admin@alnafi.com"
+        apache_server_name: "{{ inventory_hostname }}.alnafi.com"
+        apache_port: 80
+
+  post_tasks:
+    - name: Create a simple health check script
+      copy:
+        content: |
+          #!/bin/bash
+          # Apache Health Check Script
+          if systemctl is-active --quiet {{ apache_service }}; then
+            echo "Apache is running on $(hostname)"
+            curl -s http://localhost:{{ apache_port }} > /dev/null
+            if [ $? -eq 0 ]; then
+              echo "Apache is responding to HTTP requests"
+            else
+              echo "Apache is not responding to HTTP requests"
+            fi
+          else
+            echo "Apache is not running"
+          fi
+        dest: /usr/local/bin/apache-health-check.sh
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Run health check
+      command: /usr/local/bin/apache-health-check.sh
+      register: health_check_result
+
+    - name: Display health check results
+      debug:
+        var: health_check_result.stdout_lines
