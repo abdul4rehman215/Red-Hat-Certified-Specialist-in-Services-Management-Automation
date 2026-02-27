@@ -1,0 +1,525 @@
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+Policy MLS status:              enabled
+Policy deny_unknown status:     allowed
+Memory protection checking:     actual (secure)
+Max kernel policy version:      33
+
+Enforcing
+
+(no output)
+
+Last metadata expiration check: 0:12:18 ago on Tue 27 Feb 2026 10:31:44 AM UTC.
+Dependencies resolved.
+================================================================================
+ Package          Arch   Version                         Repository       Size
+================================================================================
+Installing:
+ httpd            x86_64 2.4.57-7.el9_4.1                appstream        47 k
+Installing dependencies:
+ apr              x86_64 1.7.0-11.el9                    appstream       122 k
+ apr-util         x86_64 1.6.1-23.el9                    appstream        94 k
+ httpd-core       x86_64 2.4.57-7.el9_4.1                appstream       1.4 M
+ httpd-filesystem noarch 2.4.57-7.el9_4.1                appstream        13 k
+ httpd-tools      x86_64 2.4.57-7.el9_4.1                appstream        82 k
+ mod_http2        x86_64 2.0.26-2.el9                    appstream       156 k
+Installing weak dependencies:
+ apr-util-bdb     x86_64 1.6.1-23.el9                    appstream        13 k
+ apr-util-openssl x86_64 1.6.1-23.el9                    appstream        15 k
+
+Transaction Summary
+================================================================================
+Install  9 Packages
+
+Total download size: 1.9 M
+Installed size: 5.5 M
+Downloading Packages:
+(1/9): httpd-2.4.57-7.el9_4.1.x86_64.rpm         136 kB/s |  47 kB     00:00
+(2/9): httpd-filesystem-2.4.57-7.el9_4.1.noarch  108 kB/s |  13 kB     00:00
+(3/9): httpd-tools-2.4.57-7.el9_4.1.x86_64.rpm   238 kB/s |  82 kB     00:00
+(4/9): apr-1.7.0-11.el9.x86_64.rpm               338 kB/s | 122 kB     00:00
+(5/9): apr-util-1.6.1-23.el9.x86_64.rpm          281 kB/s |  94 kB     00:00
+(6/9): apr-util-bdb-1.6.1-23.el9.x86_64.rpm       91 kB/s |  13 kB     00:00
+(7/9): apr-util-openssl-1.6.1-23.el9.x86_64.rpm  102 kB/s |  15 kB     00:00
+(8/9): mod_http2-2.0.26-2.el9.x86_64.rpm         410 kB/s | 156 kB     00:00
+(9/9): httpd-core-2.4.57-7.el9_4.1.x86_64.rpm    1.9 MB/s | 1.4 MB     00:00
+--------------------------------------------------------------------------------
+Total                                           2.4 MB/s | 1.9 MB     00:00
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Preparing        :                                                        1/1
+  Installing       : apr-1.7.0-11.el9.x86_64                                1/9
+  Installing       : apr-util-1.6.1-23.el9.x86_64                           2/9
+  Installing       : apr-util-openssl-1.6.1-23.el9.x86_64                   3/9
+  Installing       : apr-util-bdb-1.6.1-23.el9.x86_64                       4/9
+  Installing       : httpd-tools-2.4.57-7.el9_4.1.x86_64                    5/9
+  Installing       : httpd-filesystem-2.4.57-7.el9_4.1.noarch               6/9
+  Installing       : httpd-core-2.4.57-7.el9_4.1.x86_64                     7/9
+  Installing       : mod_http2-2.0.26-2.el9.x86_64                          8/9
+  Installing       : httpd-2.4.57-7.el9_4.1.x86_64                          9/9
+  Running scriptlet: httpd-filesystem-2.4.57-7.el9_4.1.noarch               9/9
+  Verifying        : apr-1.7.0-11.el9.x86_64                                1/9
+  Verifying        : apr-util-1.6.1-23.el9.x86_64                           2/9
+  Verifying        : apr-util-bdb-1.6.1-23.el9.x86_64                       3/9
+  Verifying        : apr-util-openssl-1.6.1-23.el9.x86_64                   4/9
+  Verifying        : httpd-2.4.57-7.el9_4.1.x86_64                          5/9
+  Verifying        : httpd-core-2.4.57-7.el9_4.1.x86_64                     6/9
+  Verifying        : httpd-filesystem-2.4.57-7.el9_4.1.noarch               7/9
+  Verifying        : httpd-tools-2.4.57-7.el9_4.1.x86_64                    8/9
+  Verifying        : mod_http2-2.0.26-2.el9.x86_64                          9/9
+
+Installed:
+  apr-1.7.0-11.el9.x86_64
+  apr-util-1.6.1-23.el9.x86_64
+  apr-util-bdb-1.6.1-23.el9.x86_64
+  apr-util-openssl-1.6.1-23.el9.x86_64
+  httpd-2.4.57-7.el9_4.1.x86_64
+  httpd-core-2.4.57-7.el9_4.1.x86_64
+  httpd-filesystem-2.4.57-7.el9_4.1.noarch
+  httpd-tools-2.4.57-7.el9_4.1.x86_64
+  mod_http2-2.0.26-2.el9.x86_64
+
+Complete!
+
+(no output)
+
+(no output)
+
+(no output)
+
+Created symlink /etc/systemd/system/multi-user.target.wants/httpd.service → /usr/lib/systemd/system/httpd.service.
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+● httpd.service - The Apache HTTP Server
+   Loaded: loaded (/usr/lib/systemd/system/httpd.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 10:38:21 UTC; 1min 12s ago
+     Docs: man:httpd.service(8)
+ Main PID: 2148 (httpd)
+   Status: "Running, listening on: port 8080"
+    Tasks: 213 (limit: 23000)
+   Memory: 26.3M
+   CGroup: /system.slice/httpd.service
+           ├─2148 /usr/sbin/httpd -DFOREGROUND
+           ├─2149 /usr/sbin/httpd -DFOREGROUND
+           ├─2150 /usr/sbin/httpd -DFOREGROUND
+           ├─2151 /usr/sbin/httpd -DFOREGROUND
+           └─2152 /usr/sbin/httpd -DFOREGROUND
+
+sudo: netstat: command not found
+
+Dependencies resolved.
+================================================================================
+ Package        Architecture Version                  Repository         Size
+================================================================================
+Installing:
+ net-tools      x86_64        2.0-0.62.20160912git.el9 baseos          291 k
+Transaction Summary
+================================================================================
+Install  1 Package
+
+Total download size: 291 k
+Installed size: 1.0 M
+Downloading Packages:
+net-tools-2.0-0.62.20160912git.el9.x86_64.rpm     1.2 MB/s | 291 kB 00:00
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Installing : net-tools-2.0-0.62.20160912git.el9.x86_64               1/1
+  Verifying  : net-tools-2.0-0.62.20160912git.el9.x86_64               1/1
+Complete!
+
+tcp6       0      0 :::8080                 :::*                    LISTEN      2148/httpd
+
+----
+time->Tue Feb 27 10:39:02 2026
+type=AVC msg=audit(1709030342.331:812): avc:  denied  { read } for  pid=2149 comm="httpd" name="index.html" dev="nvme0n1p1" ino=524469 scontext=system_u:system_r:httpd_t:s0 tcontext=unconfined_u:object_r:default_t:s0 tclass=file permissive=0
+----
+time->Tue Feb 27 10:39:02 2026
+type=AVC msg=audit(1709030342.331:813): avc:  denied  { open } for  pid=2149 comm="httpd" path="/custom/web/content/index.html" dev="nvme0n1p1" ino=524469 scontext=system_u:system_r:httpd_t:s0 tcontext=unconfined_u:object_r:default_t:s0 tclass=file permissive=0
+
+type=AVC msg=audit(1709030342.331:812): avc:  denied  { read } for  pid=2149 comm="httpd" name="index.html" dev="nvme0n1p1" ino=524469 scontext=system_u:system_r:httpd_t:s0 tcontext=unconfined_u:object_r:default_t:s0 tclass=file permissive=0
+
+        Was caused by:
+        Missing type enforcement (TE) allow rule.
+
+        You can use audit2allow to generate a loadable module to allow this access.
+
+SELinux is preventing /usr/sbin/httpd from read access on the file index.html.
+
+*****  Plugin catchall (100. confidence) suggests   **************************
+
+If you believe that httpd should be allowed read access on index.html by default.
+Then you should report this as a bug.
+You can generate a local policy module to allow this access.
+
+Do
+# ausearch -c 'httpd' --raw | audit2allow -M my-httpd
+# semodule -i my-httpd.pp
+
+*****  Plugin restorecon (99.5 confidence) suggests **************************
+
+If you want httpd to be able to read index.html, you should label it with httpd_sys_content_t.
+
+Do
+# semanage fcontext -a -t httpd_sys_content_t '/custom/web/content(/.*)?'
+# restorecon -Rv '/custom/web/content'
+
+Additional Information:
+Source Context                system_u:system_r:httpd_t:s0
+Target Context                unconfined_u:object_r:default_t:s0
+Target Objects                /custom/web/content/index.html [ file ]
+Source Path                   /usr/sbin/httpd
+Port                          8080
+Host                          <unknown>
+Source RPM Packages           httpd-2.4.57-7.el9_4.1.x86_64
+Target RPM Packages           (not available)
+Policy RPM                    selinux-policy-targeted-38.1.37-2.el9.noarch
+Selinux Enabled               True
+Policy Type                   targeted
+Enforcing Mode                Enforcing
+Alert Count                   2
+First Seen                    2026-02-27 10:39:02 UTC
+Last Seen                     2026-02-27 10:39:02 UTC
+
+total 4
+drwxr-xr-x. 2 apache apache unconfined_u:object_r:default_t:s0  24 Feb 27 10:36 .
+drwxr-xr-x. 3 root   root   unconfined_u:object_r:default_t:s0  21 Feb 27 10:35 ..
+-rwxr-xr-x. 1 apache apache unconfined_u:object_r:default_t:s0 218 Feb 27 10:36 index.html
+
+total 0
+drwxr-xr-x. 2 root root system_u:object_r:httpd_sys_content_t:s0  6 Apr 12  2025 .
+drwxr-xr-x. 4 root root system_u:object_r:httpd_sys_content_t:s0 33 Apr 12  2025 ..
+
+sudo: semanage: command not found
+
+Dependencies resolved.
+================================================================================
+ Package                        Arch   Version                 Repository  Size
+================================================================================
+Installing:
+ policycoreutils-python-utils   noarch 3.5-1.el9              baseos      75 k
+Installing dependencies:
+ python3-audit                  x86_64 3.0.7-104.el9          baseos     101 k
+ python3-libselinux             x86_64 3.5-1.el9              baseos     273 k
+ python3-setools                x86_64 4.4.2-2.el9            baseos     549 k
+
+Transaction Summary
+================================================================================
+Install  4 Packages
+
+Total download size: 998 k
+Installed size: 4.2 M
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Installing : python3-libselinux-3.5-1.el9.x86_64                     1/4
+  Installing : python3-audit-3.0.7-104.el9.x86_64                      2/4
+  Installing : python3-setools-4.4.2-2.el9.x86_64                      3/4
+  Installing : policycoreutils-python-utils-3.5-1.el9.noarch           4/4
+Complete!
+
+/var/www(/.*)?                                  all files          system_u:object_r:httpd_sys_content_t:s0
+/var/www/cgi-bin(/.*)?                          all files          system_u:object_r:httpd_sys_script_exec_t:s0
+/var/www/icons(/.*)?                            all files          system_u:object_r:httpd_sys_content_t:s0
+
+(no output)
+
+Relabeled /custom/web/content from unconfined_u:object_r:default_t:s0 to unconfined_u:object_r:httpd_sys_content_t:s0
+Relabeled /custom/web/content/index.html from unconfined_u:object_r:default_t:s0 to unconfined_u:object_r:httpd_sys_content_t:s0
+
+total 4
+drwxr-xr-x. 2 apache apache unconfined_u:object_r:httpd_sys_content_t:s0  24 Feb 27 10:36 .
+drwxr-xr-x. 3 root   root   unconfined_u:object_r:default_t:s0            21 Feb 27 10:35 ..
+-rwxr-xr-x. 1 apache apache unconfined_u:object_r:httpd_sys_content_t:s0 218 Feb 27 10:36 index.html
+
+<!DOCTYPE html>
+<html>
+<head>
+ <title>SELinux Test Page</title>
+</head>
+<body>
+ <h1>Welcome to SELinux Troubleshooting Lab</h1>
+ <p>If you can see this page, SELinux policies are working correctly!</p>
+</body>
+</html>
+
+Relabeled /custom/web/content from unconfined_u:object_r:httpd_sys_content_t:s0 to unconfined_u:object_r:default_t:s0
+Relabeled /custom/web/content/index.html from unconfined_u:object_r:httpd_sys_content_t:s0 to unconfined_u:object_r:default_t:s0
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+******************** IMPORTANT ***********************
+To make this policy package active, execute:
+
+semodule -i custom_httpd_policy.pp
+
+module custom_httpd_policy 1.0;
+
+require {
+        type httpd_t;
+        type default_t;
+        class file { open read getattr };
+        class dir { open read search getattr };
+}
+
+#============= httpd_t ==============
+allow httpd_t default_t:dir { open read search getattr };
+allow httpd_t default_t:file { open read getattr };
+
+(no output)
+
+custom_httpd_policy     1.0
+
+Dependencies resolved.
+================================================================================
+ Package               Arch   Version                       Repository    Size
+================================================================================
+Installing:
+ mariadb-server        x86_64 10.5.22-1.el9_4               appstream    9.6 M
+Installing dependencies:
+ mariadb               x86_64 10.5.22-1.el9_4               appstream    1.6 M
+ mariadb-common        x86_64 10.5.22-1.el9_4               appstream     32 k
+ mariadb-connector-c   x86_64 3.2.6-1.el9                   appstream    195 k
+ perl-DBI              x86_64 1.643-9.el9                   appstream    730 k
+
+Transaction Summary
+================================================================================
+Install  5 Packages
+
+Total download size: 12.2 M
+Installed size: 108 M
+Downloading Packages:
+(1/5): mariadb-common-10.5.22-1.el9_4.x86_64.rpm    205 kB/s |  32 kB  00:00
+(2/5): mariadb-connector-c-3.2.6-1.el9.x86_64.rpm   1.1 MB/s | 195 kB  00:00
+(3/5): mariadb-10.5.22-1.el9_4.x86_64.rpm           2.9 MB/s | 1.6 MB  00:00
+(4/5): perl-DBI-1.643-9.el9.x86_64.rpm              1.8 MB/s | 730 kB  00:00
+(5/5): mariadb-server-10.5.22-1.el9_4.x86_64.rpm    6.4 MB/s | 9.6 MB  00:01
+--------------------------------------------------------------------------------
+Total                                                   7.5 MB/s | 12.2 MB 00:01
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Installing : mariadb-common-10.5.22-1.el9_4.x86_64                    1/5
+  Installing : mariadb-connector-c-3.2.6-1.el9.x86_64                   2/5
+  Installing : perl-DBI-1.643-9.el9.x86_64                              3/5
+  Installing : mariadb-10.5.22-1.el9_4.x86_64                           4/5
+  Installing : mariadb-server-10.5.22-1.el9_4.x86_64                    5/5
+  Running scriptlet: mariadb-server-10.5.22-1.el9_4.x86_64              5/5
+  Verifying  : mariadb-10.5.22-1.el9_4.x86_64                           1/5
+  Verifying  : mariadb-common-10.5.22-1.el9_4.x86_64                    2/5
+  Verifying  : mariadb-connector-c-3.2.6-1.el9.x86_64                   3/5
+  Verifying  : mariadb-server-10.5.22-1.el9_4.x86_64                    4/5
+  Verifying  : perl-DBI-1.643-9.el9.x86_64                              5/5
+Complete!
+
+(no output)
+
+Relabeled /custom/database/data from unconfined_u:object_r:default_t:s0 to unconfined_u:object_r:mysqld_db_t:s0
+
+Installing MariaDB/MySQL system tables in '/custom/database/data' ...
+OK
+
+To start mysqld at boot time you have to copy
+support-files/mysql.server to the right place for your system
+
+PLEASE REMEMBER TO SET A PASSWORD FOR THE MariaDB root USER !
+To do so, start the server, then issue the following commands:
+
+'/usr/bin/mariadb-secure-installation'
+
+which will also give you the option of removing the test
+databases and anonymous user created by default.  This is
+strongly recommended for production servers.
+
+Created symlink /etc/systemd/system/multi-user.target.wants/mariadb.service → /usr/lib/systemd/system/mariadb.service.
+
+*   Trying 127.0.0.1:8080...
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> GET / HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.76.1
+> Accept: */*
+>
+< HTTP/1.1 200 OK
+< Date: Tue, 27 Feb 2026 10:54:14 GMT
+< Server: Apache/2.4.57 (Red Hat Enterprise Linux)
+< Last-Modified: Tue, 27 Feb 2026 10:36:02 GMT
+< ETag: "da-5f3b8b1f3a500"
+< Accept-Ranges: bytes
+< Content-Length: 218
+< Content-Type: text/html; charset=UTF-8
+<
+<!DOCTYPE html>
+<html>
+<head>
+ <title>SELinux Test Page</title>
+</head>
+<body>
+ <h1>Welcome to SELinux Troubleshooting Lab</h1>
+ <p>If you can see this page, SELinux policies are working correctly!</p>
+</body>
+</html>
+* Connection #0 to host localhost left intact
+
+<no matches>
+
+<!DOCTYPE html>
+<html>
+<head>
+ <title>SELinux Test Page</title>
+</head>
+<body>
+ <h1>Welcome to SELinux Troubleshooting Lab</h1>
+ <p>If you can see this page, SELinux policies are working correctly!</p>
+</body>
+</html>
+
+--2026-02-27 10:55:20--  http://localhost:8080/
+Resolving localhost (localhost)... 127.0.0.1, ::1
+Connecting to localhost (localhost)|127.0.0.1|:8080... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 218 [text/html]
+Saving to: ‘test_page.html’
+
+test_page.html                    100%[=================================================>]     218  --.-KB/s    in 0s
+
+2026-02-27 10:55:20 (29.1 MB/s) - ‘test_page.html’ saved [218/218]
+
+<!DOCTYPE html>
+<html>
+<head>
+ <title>SELinux Test Page</title>
+</head>
+<body>
+ <h1>Welcome to SELinux Troubleshooting Lab</h1>
+ <p>If you can see this page, SELinux policies are working correctly!</p>
+</body>
+</html>
+
+● mariadb.service - MariaDB 10.5 database server
+   Loaded: loaded (/usr/lib/systemd/system/mariadb.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 10:49:11 UTC; 7min ago
+     Docs: man:mariadbd(8)
+           https://mariadb.com/kb/en/library/systemd/
+ Main PID: 2891 (mariadbd)
+   Status: "Taking your SQL requests now..."
+    Tasks: 31 (limit: 23000)
+   Memory: 156.4M
+   CGroup: /system.slice/mariadb.service
+           └─2891 /usr/libexec/mariadbd --basedir=/usr
+
+Status
+Database is working!
+
+Variable_name	Value
+datadir	/custom/database/data/
+
+(no output)
+
+Dependencies resolved.
+================================================================================
+ Package              Arch   Version                    Repository       Size
+================================================================================
+Installing:
+ php                  x86_64 8.1.27-2.el9_4            appstream       9.9 k
+ php-mysqlnd          x86_64 8.1.27-2.el9_4            appstream        83 k
+Installing dependencies:
+ php-cli              x86_64 8.1.27-2.el9_4            appstream       3.2 M
+ php-common           x86_64 8.1.27-2.el9_4            appstream       731 k
+ php-mysqlnd          x86_64 8.1.27-2.el9_4            appstream        83 k
+ php-pdo              x86_64 8.1.27-2.el9_4            appstream       146 k
+
+Transaction Summary
+================================================================================
+Install  5 Packages
+
+Total download size: 4.2 M
+Installed size: 20 M
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Installing : php-common-8.1.27-2.el9_4.x86_64                          1/5
+  Installing : php-cli-8.1.27-2.el9_4.x86_64                             2/5
+  Installing : php-pdo-8.1.27-2.el9_4.x86_64                             3/5
+  Installing : php-mysqlnd-8.1.27-2.el9_4.x86_64                         4/5
+  Installing : php-8.1.27-2.el9_4.x86_64                                 5/5
+Complete!
+
+(no output)
+
+Connection failed: Access denied for user 'root'@'localhost'
+
+(no output)
+
+httpd_anon_write --> off
+httpd_can_check_spam --> off
+httpd_can_connect_ftp --> off
+httpd_can_connect_ldap --> off
+httpd_can_network_connect --> off
+httpd_can_network_connect_db --> off
+httpd_can_sendmail --> off
+httpd_dbus_avahi --> off
+httpd_enable_cgi --> on
+httpd_enable_homedirs --> off
+
+(no output)
+
+<h2>Database Connection Successful!</h2><p>SELinux is properly configured for web-database access.</p>
+
+Feb 27 10:59:02 lab-centos mariadbd[2891]: 2026-02-27 10:59:02 0 [Note] InnoDB: Buffer pool(s) load completed at 260227 10:59:02
+Feb 27 10:59:11 lab-centos httpd[2148]: Server configured, listening on: port 8080
+Feb 27 10:59:18 lab-centos httpd[2148]: AH00128: File permissions deny server access: /custom/web/content/dbtest.php
+Feb 27 10:59:18 lab-centos httpd[2148]: AH00036: access to /dbtest.php denied (filesystem path '/custom/web/content/dbtest.php') because search permissions are missing on a component of the path
+^C
+
+/custom/web/content(/.*)?                        all files          unconfined_u:object_r:default_t:s0
+/custom/database/data(/.*)?                      all files          system_u:object_r:mysqld_db_t:s0
+
+custom_httpd_policy     1.0
+
+=== SELinux Configuration Summary ===
+SELinux Status: Enforcing
+Custom File Contexts:
+/custom/web/content(/.*)?                        all files          unconfined_u:object_r:default_t:s0
+/custom/database/data(/.*)?                      all files          system_u:object_r:mysqld_db_t:s0
+Custom Modules:
+custom_httpd_policy     1.0
+Services Status:
+active
+active
+
+Testing web service...
+<title>SELinux Test Page</title>
+Testing database service...
+DatabaseStatus
+OK
+Checking for recent SELinux denials...
+0
