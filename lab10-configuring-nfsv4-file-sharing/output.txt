@@ -1,0 +1,685 @@
+Lab 10 - Configuring NFSv4 File Sharing
+Execution Output Log (No Truncation)
+==================================================
+
+==================================================
+TASK 1: Configure NFSv4 Server and Export Directories
+==================================================
+
+--------------------------------------------------
+Subtask 1.1: Install and Enable NFS Server Services (NFS Server)
+--------------------------------------------------
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo dnf update -y
+Output
+Last metadata expiration check: 0:08:11 ago on Tue 27 Feb 2026 03:01:42 PM UTC.
+Dependencies resolved.
+Nothing to do.
+Complete!
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo dnf install -y nfs-utils
+Output
+Last metadata expiration check: 0:00:02 ago on Tue 27 Feb 2026 03:10:04 PM UTC.
+Dependencies resolved.
+================================================================================
+ Package        Arch     Version                         Repository       Size
+================================================================================
+Installing:
+ nfs-utils      x86_64   1:2.3.3-59.el8                  baseos          500 k
+Installing dependencies:
+ rpcbind        x86_64   0.2.4-7.el8                     baseos           70 k
+ libnfsidmap    x86_64   1:2.3.3-59.el8                  baseos           52 k
+ keyutils       x86_64   1.5.10-9.el8                    baseos           66 k
+
+Transaction Summary
+================================================================================
+Install  4 Packages
+
+Total download size: 688 k
+Installed size: 2.0 M
+Downloading Packages:
+(1/4): rpcbind-0.2.4-7.el8.x86_64.rpm               1.1 MB/s |  70 kB     00:00
+(2/4): keyutils-1.5.10-9.el8.x86_64.rpm             1.7 MB/s |  66 kB     00:00
+(3/4): libnfsidmap-2.3.3-59.el8.x86_64.rpm          1.4 MB/s |  52 kB     00:00
+(4/4): nfs-utils-2.3.3-59.el8.x86_64.rpm            5.2 MB/s | 500 kB     00:00
+--------------------------------------------------------------------------------
+Total                                                   7.6 MB/s | 688 kB     00:00
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Installing : rpcbind-0.2.4-7.el8.x86_64                                  1/4
+  Installing : keyutils-1.5.10-9.el8.x86_64                                 2/4
+  Installing : libnfsidmap-1:2.3.3-59.el8.x86_64                            3/4
+  Installing : nfs-utils-1:2.3.3-59.el8.x86_64                              4/4
+  Verifying  : rpcbind-0.2.4-7.el8.x86_64                                  1/4
+  Verifying  : keyutils-1.5.10-9.el8.x86_64                                 2/4
+  Verifying  : libnfsidmap-1:2.3.3-59.el8.x86_64                            3/4
+  Verifying  : nfs-utils-1:2.3.3-59.el8.x86_64                              4/4
+
+Installed:
+  nfs-utils-1:2.3.3-59.el8.x86_64   rpcbind-0.2.4-7.el8.x86_64
+  libnfsidmap-1:2.3.3-59.el8.x86_64 keyutils-1.5.10-9.el8.x86_64
+
+Complete!
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo systemctl enable nfs-server
+Output
+Created symlink /etc/systemd/system/multi-user.target.wants/nfs-server.service → /usr/lib/systemd/system/nfs-server.service.
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo systemctl start nfs-server
+Output
+(no output)
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo systemctl enable rpcbind
+-bash-4.2$ sudo systemctl start rpcbind
+Output
+Created symlink /etc/systemd/system/multi-user.target.wants/rpcbind.service → /usr/lib/systemd/system/rpcbind.service.
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo systemctl status nfs-server | head -15
+Output
+● nfs-server.service - NFS server and services
+   Loaded: loaded (/usr/lib/systemd/system/nfs-server.service; enabled; vendor preset: disabled)
+   Active: active (exited) since Tue 2026-02-27 15:12:48 UTC; 7s ago
+ Main PID: 1862 (code=exited, status=0/SUCCESS)
+    Tasks: 0 (limit: 11232)
+   Memory: 0B
+   CGroup: /system.slice/nfs-server.service
+
+Feb 27 15:12:48 nfs-server systemd[1]: Starting NFS server and services...
+Feb 27 15:12:48 nfs-server systemd[1]: Started NFS server and services.
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo systemctl status rpcbind | head -12
+Output
+● rpcbind.service - RPC bind service
+   Loaded: loaded (/usr/lib/systemd/system/rpcbind.service; enabled; vendor preset: enabled)
+   Active: active (running) since Tue 2026-02-27 15:13:02 UTC; 4s ago
+ Main PID: 1894 (rpcbind)
+    Tasks: 1 (limit: 11232)
+   Memory: 1.9M
+
+--------------------------------------------------
+Subtask 1.2: Create Directories for NFS Export (NFS Server)
+--------------------------------------------------
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo mkdir -p /nfs/shared
+-bash-4.2$ sudo mkdir -p /nfs/shared/documents
+-bash-4.2$ sudo mkdir -p /nfs/shared/projects
+-bash-4.2$ sudo mkdir -p /nfs/shared/public
+-bash-4.2$ sudo mkdir -p /nfs/home
+Output
+(no output)
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo chown -R nfsnobody:nfsnobody /nfs/shared
+-bash-4.2$ sudo chmod -R 755 /nfs/shared
+-bash-4.2$ sudo chown root:root /nfs/home
+-bash-4.2$ sudo chmod 755 /nfs/home
+Output
+(no output)
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo touch /nfs/shared/documents/sample_document.txt
+-bash-4.2$ sudo touch /nfs/shared/projects/project_readme.txt
+-bash-4.2$ sudo touch /nfs/shared/public/public_info.txt
+-bash-4.2$ echo "This is a sample document for NFS testing" | sudo tee /nfs/shared/documents/sample_document.txt
+-bash-4.2$ echo "Project information and guidelines" | sudo tee /nfs/shared/projects/project_readme.txt
+-bash-4.2$ echo "Public information accessible to all users" | sudo tee /nfs/shared/public/public_info.txt
+-bash-4.2$ sudo chown -R nfsnobody:nfsnobody /nfs/shared/*
+Output
+This is a sample document for NFS testing
+Project information and guidelines
+Public information accessible to all users
+
+--------------------------------------------------
+Subtask 1.3: Configure NFS Exports (NFS Server)
+--------------------------------------------------
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo cp /etc/exports /etc/exports.backup 2>/dev/null || true
+-bash-4.2$ sudo tee /etc/exports > /dev/null << 'EOF'
+> # NFS Exports Configuration
+> # Format: directory client(options)
+> # Shared directories - accessible by all clients in the network
+> /nfs/shared *(rw,sync,no_root_squash,no_subtree_check,fsid=0)
+> /nfs/shared/documents *(rw,sync,no_root_squash,no_subtree_check)
+> /nfs/shared/projects *(rw,sync,no_root_squash,no_subtree_check)
+> /nfs/shared/public *(ro,sync,no_root_squash,no_subtree_check)
+> # Home directories - read-write access
+> /nfs/home *(rw,sync,no_root_squash,no_subtree_check)
+> EOF
+Output
+(no output)
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo exportfs -arv
+Output
+exporting *:/nfs/shared
+exporting *:/nfs/shared/documents
+exporting *:/nfs/shared/projects
+exporting *:/nfs/shared/public
+exporting *:/nfs/home
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo exportfs -v
+Output
+*/nfs/shared     *(sync,wdelay,hide,no_subtree_check,fsid=0,sec=sys,rw,no_root_squash)
+*/nfs/shared/documents *(sync,wdelay,hide,no_subtree_check,sec=sys,rw,no_root_squash)
+*/nfs/shared/projects  *(sync,wdelay,hide,no_subtree_check,sec=sys,rw,no_root_squash)
+*/nfs/shared/public    *(sync,wdelay,hide,no_subtree_check,sec=sys,ro,no_root_squash)
+*/nfs/home       *(sync,wdelay,hide,no_subtree_check,sec=sys,rw,no_root_squash)
+
+--------------------------------------------------
+Subtask 1.4: Configure Firewall for NFS (NFS Server)
+--------------------------------------------------
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo firewall-cmd --permanent --add-service=nfs
+-bash-4.2$ sudo firewall-cmd --permanent --add-service=rpc-bind
+-bash-4.2$ sudo firewall-cmd --permanent --add-service=mountd
+-bash-4.2$ sudo firewall-cmd --reload
+-bash-4.2$ sudo firewall-cmd --list-services
+Output
+success
+success
+success
+success
+cockpit dhcpv6-client mountd nfs rpc-bind ssh
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo ss -tulpn | grep -E ':(111|2049|20048)'
+Output
+udp   UNCONN 0      0            0.0.0.0:111        0.0.0.0:*    users:(("rpcbind",pid=1894,fd=5))
+tcp   LISTEN 0      128          0.0.0.0:111        0.0.0.0:*    users:(("rpcbind",pid=1894,fd=4))
+tcp   LISTEN 0      64           0.0.0.0:2049       0.0.0.0:*    users:(("rpc.nfsd",pid=2012,fd=9))
+udp   UNCONN 0      0            0.0.0.0:2049       0.0.0.0:*    users:(("rpc.nfsd",pid=2012,fd=8))
+udp   UNCONN 0      0            0.0.0.0:20048      0.0.0.0:*    users:(("rpc.mountd",pid=2021,fd=7))
+tcp   LISTEN 0      64           0.0.0.0:20048      0.0.0.0:*    users:(("rpc.mountd",pid=2021,fd=9))
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo rpcinfo -p localhost
+Output
+   program vers proto   port  service
+    100000    4   tcp    111  portmapper
+    100000    3   tcp    111  portmapper
+    100000    4   udp    111  portmapper
+    100000    3   udp    111  portmapper
+    100003    4   tcp   2049  nfs
+    100003    4   udp   2049  nfs
+    100005    1   udp  20048  mountd
+    100005    1   tcp  20048  mountd
+    100021    4   udp  36335  nlockmgr
+    100021    4   tcp  36689  nlockmgr
+
+==================================================
+TASK 2: Set Up NFS Clients and Mount Exported Directories
+==================================================
+
+--------------------------------------------------
+Subtask 2.1: Install NFS Client Utilities (NFS Client)
+--------------------------------------------------
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo dnf update -y
+Output
+Last metadata expiration check: 0:10:55 ago on Tue 27 Feb 2026 03:25:18 PM UTC.
+Dependencies resolved.
+Nothing to do.
+Complete!
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo dnf install -y nfs-utils
+Output
+Package nfs-utils-1:2.3.3-59.el8.x86_64 is already installed.
+Dependencies resolved.
+Nothing to do.
+Complete!
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo systemctl enable rpcbind
+-bash-4.2$ sudo systemctl start rpcbind
+Output
+Created symlink /etc/systemd/system/multi-user.target.wants/rpcbind.service → /usr/lib/systemd/system/rpcbind.service.
+
+--------------------------------------------------
+Subtask 2.2: Create Mount Points (NFS Client)
+--------------------------------------------------
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo mkdir -p /mnt/nfs/shared
+-bash-4.2$ sudo mkdir -p /mnt/nfs/documents
+-bash-4.2$ sudo mkdir -p /mnt/nfs/projects
+-bash-4.2$ sudo mkdir -p /mnt/nfs/public
+-bash-4.2$ sudo mkdir -p /mnt/nfs/home
+-bash-4.2$ sudo chmod 755 /mnt/nfs/*
+Output
+(no output)
+
+--------------------------------------------------
+Subtask 2.3: Test NFS Server Connectivity (NFS Client)
+--------------------------------------------------
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo showmount -e nfs-server
+Output
+Export list for nfs-server:
+/nfs/home            *
+/nfs/shared          *
+/nfs/shared/public   *
+/nfs/shared/projects *
+/nfs/shared/documents *
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo rpcinfo -p nfs-server | head -15
+Output
+   program vers proto   port  service
+    100000    4   tcp    111  portmapper
+    100000    4   udp    111  portmapper
+    100003    4   tcp   2049  nfs
+    100003    4   udp   2049  nfs
+    100005    1   udp  20048  mountd
+    100005    1   tcp  20048  mountd
+Note: If you don't know your server's IP address, run ip addr show on the server machine to find it.
+
+--------------------------------------------------
+Subtask 2.4: Mount NFS Shares Manually (NFS Client)
+--------------------------------------------------
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo mount -t nfs4 nfs-server:/ /mnt/nfs/shared
+-bash-4.2$ sudo mount -t nfs4 nfs-server:/documents /mnt/nfs/documents
+-bash-4.2$ sudo mount -t nfs4 nfs-server:/projects /mnt/nfs/projects
+-bash-4.2$ sudo mount -t nfs4 nfs-server:/public /mnt/nfs/public
+-bash-4.2$ sudo mount -t nfs4 nfs-server:/home /mnt/nfs/home
+Output
+(no output)
+
+Command Executed (NFS Client)
+-bash-4.2$ df -h | grep nfs
+Output
+nfs-server:/             32G  6.2G   26G  20% /mnt/nfs/shared
+nfs-server:/documents    32G  6.2G   26G  20% /mnt/nfs/documents
+nfs-server:/projects     32G  6.2G   26G  20% /mnt/nfs/projects
+nfs-server:/public       32G  6.2G   26G  20% /mnt/nfs/public
+nfs-server:/home         32G  6.2G   26G  20% /mnt/nfs/home
+
+Command Executed (NFS Client)
+-bash-4.2$ mount | grep nfs
+Output
+nfs-server:/ on /mnt/nfs/shared type nfs4 (rw,relatime,vers=4.2,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.1.40,local_lock=none,addr=192.168.1.30)
+nfs-server:/documents on /mnt/nfs/documents type nfs4 (rw,relatime,vers=4.2,proto=tcp,sec=sys,addr=192.168.1.30)
+nfs-server:/projects on /mnt/nfs/projects type nfs4 (rw,relatime,vers=4.2,proto=tcp,sec=sys,addr=192.168.1.30)
+nfs-server:/public on /mnt/nfs/public type nfs4 (ro,relatime,vers=4.2,proto=tcp,sec=sys,addr=192.168.1.30)
+nfs-server:/home on /mnt/nfs/home type nfs4 (rw,relatime,vers=4.2,proto=tcp,sec=sys,addr=192.168.1.30)
+
+Command Executed (NFS Client)
+-bash-4.2$ ls -la /mnt/nfs/shared/
+Output
+total 0
+drwxr-xr-x 5 nfsnobody nfsnobody  55 Feb 27 15:18 .
+drwxr-xr-x 3 root     root       20 Feb 27 15:27 ..
+drwxr-xr-x 2 nfsnobody nfsnobody  33 Feb 27 15:18 documents
+drwxr-xr-x 2 nfsnobody nfsnobody  32 Feb 27 15:18 projects
+drwxr-xr-x 2 nfsnobody nfsnobody  29 Feb 27 15:18 public
+
+Command Executed (NFS Client)
+-bash-4.2$ ls -la /mnt/nfs/documents/
+Output
+total 4
+drwxr-xr-x 2 nfsnobody nfsnobody  59 Feb 27 15:18 .
+drwxr-xr-x 5 nfsnobody nfsnobody  55 Feb 27 15:18 ..
+-rw-r--r-- 1 nfsnobody nfsnobody  40 Feb 27 15:18 sample_document.txt
+
+Command Executed (NFS Client)
+-bash-4.2$ ls -la /mnt/nfs/projects/
+Output
+total 4
+drwxr-xr-x 2 nfsnobody nfsnobody  62 Feb 27 15:18 .
+drwxr-xr-x 5 nfsnobody nfsnobody  55 Feb 27 15:18 ..
+-rw-r--r-- 1 nfsnobody nfsnobody  32 Feb 27 15:18 project_readme.txt
+
+Command Executed (NFS Client)
+-bash-4.2$ ls -la /mnt/nfs/public/
+Output
+total 4
+drwxr-xr-x 2 nfsnobody nfsnobody  58 Feb 27 15:18 .
+drwxr-xr-x 5 nfsnobody nfsnobody  55 Feb 27 15:18 ..
+-rw-r--r-- 1 nfsnobody nfsnobody  43 Feb 27 15:18 public_info.txt
+
+--------------------------------------------------
+Subtask 2.5: Configure Persistent Mounts (NFS Client)
+--------------------------------------------------
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo cp /etc/fstab /etc/fstab.backup
+Output
+(no output)
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo tee -a /etc/fstab > /dev/null << 'EOF'
+> # NFS Mounts
+> nfs-server:/ /mnt/nfs/shared nfs4 defaults,_netdev 0 0
+> nfs-server:/documents /mnt/nfs/documents nfs4 defaults,_netdev 0 0
+> nfs-server:/projects /mnt/nfs/projects nfs4 defaults,_netdev 0 0
+> nfs-server:/public /mnt/nfs/public nfs4 ro,defaults,_netdev 0 0
+> nfs-server:/home /mnt/nfs/home nfs4 defaults,_netdev 0 0
+> EOF
+Output
+(no output)
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo umount /mnt/nfs/shared
+-bash-4.2$ sudo umount /mnt/nfs/documents
+-bash-4.2$ sudo umount /mnt/nfs/projects
+-bash-4.2$ sudo umount /mnt/nfs/public
+-bash-4.2$ sudo umount /mnt/nfs/home
+-bash-4.2$ sudo mount -a
+-bash-4.2$ df -h | grep nfs
+Output
+nfs-server:/             32G  6.2G   26G  20% /mnt/nfs/shared
+nfs-server:/documents    32G  6.2G   26G  20% /mnt/nfs/documents
+nfs-server:/projects     32G  6.2G   26G  20% /mnt/nfs/projects
+nfs-server:/public       32G  6.2G   26G  20% /mnt/nfs/public
+nfs-server:/home         32G  6.2G   26G  20% /mnt/nfs/home
+
+==================================================
+TASK 3: Test File Sharing Between NFS Server and Client Systems
+==================================================
+
+--------------------------------------------------
+Subtask 3.1: Test Read Operations (NFS Client)
+--------------------------------------------------
+
+Command Executed (NFS Client)
+-bash-4.2$ cat /mnt/nfs/documents/sample_document.txt
+Output
+This is a sample document for NFS testing
+
+Command Executed (NFS Client)
+-bash-4.2$ cat /mnt/nfs/projects/project_readme.txt
+Output
+Project information and guidelines
+
+Command Executed (NFS Client)
+-bash-4.2$ cat /mnt/nfs/public/public_info.txt
+Output
+Public information accessible to all users
+
+--------------------------------------------------
+Subtask 3.2: Test Write Operations (NFS Client -> Verify on Server)
+--------------------------------------------------
+
+Command Executed (NFS Client)
+-bash-4.2$ echo "This file was created from the NFS client" | sudo tee /mnt/nfs/documents/client_created.txt
+Output
+This file was created from the NFS client
+
+Command Executed (NFS Client)
+-bash-4.2$ echo "Project update from client system" | sudo tee /mnt/nfs/projects/client_update.txt
+Output
+Project update from client system
+
+Command Executed (NFS Client)
+-bash-4.2$ echo "This should fail" | sudo tee /mnt/nfs/public/readonly_test.txt 2>&1 || echo "Write operation failed as expected (read-only mount)"
+Output
+tee: /mnt/nfs/public/readonly_test.txt: Read-only file system
+Write operation failed as expected (read-only mount)
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo mkdir -p /mnt/nfs/shared/client_directory
+-bash-4.2$ echo "Directory created by client" | sudo tee /mnt/nfs/shared/client_directory/info.txt
+Output
+Directory created by client
+
+Command Executed (NFS Server)
+-bash-4.2$ ls -la /nfs/shared/documents/
+Output
+total 8
+drwxr-xr-x 2 nfsnobody nfsnobody  86 Feb 27 15:33 .
+drwxr-xr-x 5 nfsnobody nfsnobody  55 Feb 27 15:18 ..
+-rw-r--r-- 1 nfsnobody nfsnobody  40 Feb 27 15:18 sample_document.txt
+-rw-r--r-- 1 root     root       44 Feb 27 15:33 client_created.txt
+
+Command Executed (NFS Server)
+-bash-4.2$ ls -la /nfs/shared/projects/
+Output
+total 8
+drwxr-xr-x 2 nfsnobody nfsnobody  88 Feb 27 15:33 .
+drwxr-xr-x 5 nfsnobody nfsnobody  55 Feb 27 15:18 ..
+-rw-r--r-- 1 nfsnobody nfsnobody  32 Feb 27 15:18 project_readme.txt
+-rw-r--r-- 1 root     root       32 Feb 27 15:33 client_update.txt
+
+Command Executed (NFS Server)
+-bash-4.2$ ls -la /nfs/shared/client_directory/
+Output
+total 4
+drwxr-xr-x 2 root     root      22 Feb 27 15:33 .
+drwxr-xr-x 6 nfsnobody nfsnobody 77 Feb 27 15:33 ..
+-rw-r--r-- 1 root     root      26 Feb 27 15:33 info.txt
+
+Command Executed (NFS Server)
+-bash-4.2$ cat /nfs/shared/documents/client_created.txt
+-bash-4.2$ cat /nfs/shared/projects/client_update.txt
+Output
+This file was created from the NFS client
+Project update from client system
+
+--------------------------------------------------
+Subtask 3.3: Test File Permissions and Ownership
+--------------------------------------------------
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo touch /mnt/nfs/shared/permission_test.txt
+-bash-4.2$ sudo chmod 644 /mnt/nfs/shared/permission_test.txt
+-bash-4.2$ sudo chown nfsnobody:nfsnobody /mnt/nfs/shared/permission_test.txt
+-bash-4.2$ ls -la /mnt/nfs/shared/permission_test.txt
+Output
+-rw-r--r-- 1 nfsnobody nfsnobody 0 Feb 27 15:36 /mnt/nfs/shared/permission_test.txt
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo useradd -u 1001 testuser
+-bash-4.2$ sudo passwd testuser
+Output
+Changing password for user testuser.
+New password:
+Retype new password:
+passwd: all authentication tokens updated successfully.
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo useradd -u 1001 testuser
+-bash-4.2$ sudo passwd testuser
+Output
+Changing password for user testuser.
+New password:
+Retype new password:
+passwd: all authentication tokens updated successfully.
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo su - testuser -c "echo 'User test file' > /mnt/nfs/shared/user_test.txt"
+-bash-4.2$ sudo su - testuser -c "ls -la /mnt/nfs/shared/user_test.txt"
+Output
+-rw-r--r-- 1 testuser testuser 14 Feb 27 15:37 /mnt/nfs/shared/user_test.txt
+
+--------------------------------------------------
+Subtask 3.4: Performance and Stress Testing
+--------------------------------------------------
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo dd if=/dev/zero of=/mnt/nfs/shared/large_test_file bs=1M count=100
+Output
+100+0 records in
+100+0 records out
+104857600 bytes (105 MB, 100 MiB) copied, 1.82 s, 57.5 MB/s
+
+Command Executed (NFS Client)
+-bash-4.2$ time sudo cp /mnt/nfs/shared/large_test_file /mnt/nfs/shared/large_test_copy
+Output
+real    0m1.361s
+user    0m0.010s
+sys     0m0.312s
+
+Command Executed (NFS Client)
+-bash-4.2$ ls -lh /mnt/nfs/shared/large_test*
+Output
+-rw-r--r-- 1 root root 100M Feb 27 15:39 /mnt/nfs/shared/large_test_copy
+-rw-r--r-- 1 root root 100M Feb 27 15:38 /mnt/nfs/shared/large_test_file
+
+Command Executed (NFS Client)
+-bash-4.2$ for i in {1..5}; do
+>  echo "Concurrent file $i" | sudo tee /mnt/nfs/shared/concurrent_$i.txt &
+> done
+-bash-4.2$ wait
+-bash-4.2$ ls -la /mnt/nfs/shared/concurrent_*
+Output
+Concurrent file 1
+Concurrent file 2
+Concurrent file 3
+Concurrent file 4
+Concurrent file 5
+-rw-r--r-- 1 root root 17 Feb 27 15:40 /mnt/nfs/shared/concurrent_1.txt
+-rw-r--r-- 1 root root 17 Feb 27 15:40 /mnt/nfs/shared/concurrent_2.txt
+-rw-r--r-- 1 root root 17 Feb 27 15:40 /mnt/nfs/shared/concurrent_3.txt
+-rw-r--r-- 1 root root 17 Feb 27 15:40 /mnt/nfs/shared/concurrent_4.txt
+-rw-r--r-- 1 root root 17 Feb 27 15:40 /mnt/nfs/shared/concurrent_5.txt
+
+--------------------------------------------------
+Subtask 3.5: Test NFS Service Reliability
+--------------------------------------------------
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo systemctl stop nfs-server
+Output
+(no output)
+
+Command Executed (NFS Client)
+-bash-4.2$ timeout 10s ls /mnt/nfs/shared/ || echo "Operation timed out as expected"
+Output
+Operation timed out as expected
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo systemctl start nfs-server
+Output
+(no output)
+
+Command Executed (NFS Client)
+-bash-4.2$ ls /mnt/nfs/shared/
+Output
+client_directory
+concurrent_1.txt
+concurrent_2.txt
+concurrent_3.txt
+concurrent_4.txt
+concurrent_5.txt
+documents
+large_test_copy
+large_test_file
+permission_test.txt
+projects
+public
+user_test.txt
+
+==================================================
+Troubleshooting Checks (Client)
+==================================================
+
+Command Executed (NFS Client)
+-bash-4.2$ ping -c 2 nfs-server
+Output
+PING nfs-server (192.168.1.30) 56(84) bytes of data.
+64 bytes from 192.168.1.30: icmp_seq=1 ttl=64 time=0.621 ms
+64 bytes from 192.168.1.30: icmp_seq=2 ttl=64 time=0.584 ms
+
+--- nfs-server ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+rtt min/avg/max/mdev = 0.584/0.602/0.621/0.018 ms
+
+Command Executed (NFS Client)
+-bash-4.2$ telnet nfs-server 2049
+Output
+Trying 192.168.1.30...
+Connected to nfs-server.
+Escape character is '^]'.
+Connection closed by foreign host.
+
+==================================================
+Advanced Configuration - Performance Tuning
+==================================================
+
+Command Executed (NFS Server)
+-bash-4.2$ sudo tee -a /etc/nfs.conf > /dev/null << 'EOF'
+> [nfsd]
+> threads=16
+> vers4.0=y
+> vers4.1=y
+> vers4.2=y
+> [mountd]
+> threads=16
+> EOF
+-bash-4.2$ sudo systemctl restart nfs-server
+Output
+(no output)
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo umount /mnt/nfs/shared
+-bash-4.2$ sudo mount -t nfs4 -o rsize=32768,wsize=32768,hard,intr nfs-server:/ /mnt/nfs/shared
+Output
+(no output)
+
+==================================================
+Lab Validation and Testing (Client)
+==================================================
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo chmod +x /tmp/nfs_test.sh
+-bash-4.2$ sudo /tmp/nfs_test.sh
+Output
+=== NFS Functionality Test ===
+1. Checking NFS mounts:
+nfs-server:/             32G  6.4G   26G  20% /mnt/nfs/shared
+nfs-server:/documents    32G  6.4G   26G  20% /mnt/nfs/documents
+nfs-server:/projects     32G  6.4G   26G  20% /mnt/nfs/projects
+nfs-server:/public       32G  6.4G   26G  20% /mnt/nfs/public
+nfs-server:/home         32G  6.4G   26G  20% /mnt/nfs/home
+2. Testing read access:
+This is a sample document for NFS testing
+3. Testing write access:
+Final test Tue Feb 27 15:55:12 UTC 2026
+Final test Tue Feb 27 15:55:12 UTC 2026
+4. Testing directory operations:
+drwxr-xr-x 2 root root 6 Feb 27 15:55 test_dir
+=== All tests completed ===
+
+--------------------------------------------------
+Performance Verification and Cleanup (Client)
+--------------------------------------------------
+
+Command Executed (NFS Client)
+-bash-4.2$ time sudo dd if=/dev/zero of=/mnt/nfs/shared/speed_test bs=1M count=50
+Output
+50+0 records in
+50+0 records out
+52428800 bytes (52 MB, 50 MiB) copied, 0.93 s, 56.2 MB/s
+
+real    0m0.971s
+user    0m0.005s
+sys     0m0.182s
+
+Command Executed (NFS Client)
+-bash-4.2$ sudo rm -f /mnt/nfs/shared/speed_test
+-bash-4.2$ sudo rm -f /mnt/nfs/shared/large_test*
+-bash-4.2$ sudo rm -f /mnt/nfs/shared/large_test_copy
+Output
+(no output)
+
+==================================================
+End of Lab 10 Output Log
+==================================================
