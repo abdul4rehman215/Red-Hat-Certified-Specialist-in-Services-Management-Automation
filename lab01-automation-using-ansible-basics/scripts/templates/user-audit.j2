@@ -1,0 +1,21 @@
+User Account Audit Report
+========================
+Server: {{ ansible_hostname }}
+Date: {{ ansible_date_time.iso8601 }}
+
+System Users:
+{% for username, info in passwd_entries.items() %}
+- {{ username }} (UID: {{ info[1] }}, Shell: {{ info[5] }})
+{% endfor %}
+
+Group Memberships:
+{% for groupname, ginfo in group_entries.items() %}
+- {{ groupname }} (GID: {{ ginfo[1] }})
+{% endfor %}
+
+Home Directories:
+{% for user in users_to_create %}
+- /home/{{ user.username }} - {{ user.full_name }}
+{% endfor %}
+
+Audit completed by Ansible
