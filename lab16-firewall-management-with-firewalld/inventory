@@ -1,0 +1,9 @@
+[webservers]
+web1 ansible_host=192.168.1.10 ansible_user=student
+
+[dbservers]
+db1 ansible_host=192.168.1.11 ansible_user=student
+
+[all:vars]
+ansible_ssh_private_key_file=~/.ssh/lab_key
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
