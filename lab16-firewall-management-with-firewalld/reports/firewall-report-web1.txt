@@ -1,0 +1,16 @@
+Firewall Configuration Report
+============================
+Generated: 2026-02-27T19:10:00Z
+Host: web1
+
+Active Zones:
+N/A
+
+Default Zone:
+N/A
+
+Interface Assignments:
+public
+
+Rich Rules:
+N/A
