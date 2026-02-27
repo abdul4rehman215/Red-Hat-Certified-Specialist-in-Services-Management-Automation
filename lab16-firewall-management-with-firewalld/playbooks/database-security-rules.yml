@@ -1,0 +1,51 @@
+---
+- name: Configure Database Security Rules
+  hosts: dbservers
+  become: yes
+  vars:
+    web_server_ips:
+      - "192.168.1.10"
+    admin_networks:
+      - "192.168.1.0/24"
+
+  tasks:
+    - name: Create secure-db zone
+      firewalld:
+        zone: secure-db
+        state: present
+        permanent: yes
+        immediate: yes
+
+    - name: Allow MySQL access only from web servers
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="{{ item }}" service name="mysql" accept'
+        zone: secure-db
+        permanent: yes
+        immediate: yes
+        state: enabled
+      loop: "{{ web_server_ips }}"
+
+    - name: Allow SSH access only from admin networks
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="{{ item }}" service name="ssh" accept'
+        zone: secure-db
+        permanent: yes
+        immediate: yes
+        state: enabled
+      loop: "{{ admin_networks }}"
+
+    - name: Block all other MySQL traffic
+      firewalld:
+        rich_rule: 'rule service name="mysql" drop'
+        zone: public
+        permanent: yes
+        immediate: yes
+        state: enabled
+
+    - name: Configure database backup port access
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="192.168.1.0/24" port port="3307" protocol="tcp" accept'
+        zone: secure-db
+        permanent: yes
+        immediate: yes
+        state: enabled
