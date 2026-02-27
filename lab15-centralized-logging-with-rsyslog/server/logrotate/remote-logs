@@ -1,0 +1,12 @@
+/var/log/remote/*/*.log {
+ daily
+ missingok
+ rotate 30
+ compress
+ delaycompress
+ notifempty
+ create 644 syslog adm
+ postrotate
+ /bin/kill -HUP `cat /var/run/rsyslogd.pid 2> /dev/null` 2> /dev/null || true
+ endscript
+}
