@@ -1,0 +1,495 @@
+Lab 06 - Automating Squid Proxy Server Installation
+Execution Output Log (No Truncation)
+==================================================
+
+--------------------------------------------------
+Task 1.1 - Set Up the Ansible Project Structure
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ mkdir -p ~/squid-proxy-lab
+-bash-4.2$ cd ~/squid-proxy-lab
+Output
+(no output)
+
+Command Executed
+-bash-4.2$ mkdir -p {playbooks,inventory,templates,vars}
+Output
+(no output)
+
+Command Executed
+-bash-4.2$ nano inventory/hosts.yml
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 1.2 - Create the Main Squid Installation Playbook
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ nano playbooks/install-squid.yml
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 1.3 - Test the Basic Installation
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ cd ~/squid-proxy-lab
+-bash-4.2$ ansible-playbook -i inventory/hosts.yml playbooks/install-squid.yml
+Output
+PLAY [Install and Configure Squid Proxy Server] *******************************
+
+TASK [Gathering Facts] ********************************************************
+ok: [squid-server]
+
+TASK [Update system packages] *************************************************
+changed: [squid-server]
+
+TASK [Install EPEL repository] ************************************************
+changed: [squid-server]
+
+TASK [Install Squid proxy server] *********************************************
+changed: [squid-server]
+
+TASK [Install additional utilities] *******************************************
+changed: [squid-server]
+
+TASK [Create squid cache directory] *******************************************
+ok: [squid-server]
+
+TASK [Initialize squid cache directories] *************************************
+changed: [squid-server]
+
+TASK [Enable and start squid service] *****************************************
+changed: [squid-server]
+
+TASK [Configure firewall for squid] *******************************************
+changed: [squid-server]
+
+TASK [Display squid service status] *******************************************
+changed: [squid-server]
+
+TASK [Show squid status] ******************************************************
+ok: [squid-server] => {
+  "squid_status.stdout_lines": [
+    "● squid.service - Squid caching proxy",
+    "   Loaded: loaded (/usr/lib/systemd/system/squid.service; enabled; vendor preset: disabled)",
+    "   Active: active (running) since Tue 2026-02-27 11:18:44 UTC; 5s ago",
+    " Main PID: 1762 (squid)",
+    "    Tasks: 4 (limit: 11232)",
+    "   Memory: 18.7M",
+    "   CGroup: /system.slice/squid.service",
+    "           ├─1762 /usr/sbin/squid -f /etc/squid/squid.conf",
+    "           └─1764 (squid-1) --kid squid-1 -f /etc/squid/squid.conf"
+  ]
+}
+
+PLAY RECAP ********************************************************************
+squid-server                : ok=11   changed=8    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+--------------------------------------------------
+Verification - Check Squid Service is Running
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ ansible proxy_servers -i inventory/hosts.yml -m command -a "systemctl status squid"
+Output
+squid-server | CHANGED | rc=0 >>
+● squid.service - Squid caching proxy
+   Loaded: loaded (/usr/lib/systemd/system/squid.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 11:18:44 UTC; 1min 12s ago
+ Main PID: 1762 (squid)
+    Tasks: 4 (limit: 11232)
+   Memory: 18.9M
+   CGroup: /system.slice/squid.service
+           ├─1762 /usr/sbin/squid -f /etc/squid/squid.conf
+           └─1764 (squid-1) --kid squid-1 -f /etc/squid/squid.conf
+
+--------------------------------------------------
+Task 2.1 - Create Squid Configuration Template
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ nano templates/squid.conf.j2
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 2.2 - Create Advanced Configuration Playbook
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ nano playbooks/configure-squid.yml
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 2.3 - Create Blocked Domains Template
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ nano templates/blocked_domains.j2
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 2.4 - Apply Advanced Configuration
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ ansible-playbook -i inventory/hosts.yml playbooks/configure-squid.yml
+Output
+PLAY [Advanced Squid Proxy Configuration] **************************************
+
+TASK [Gathering Facts] ********************************************************
+ok: [squid-server]
+
+TASK [Backup original squid configuration] ************************************
+changed: [squid-server]
+
+TASK [Deploy custom squid configuration] **************************************
+changed: [squid-server]
+
+TASK [Create blocked domains ACL file] ****************************************
+changed: [squid-server]
+
+TASK [Create squid log rotation configuration] ********************************
+changed: [squid-server]
+
+TASK [Validate squid configuration] *******************************************
+changed: [squid-server]
+
+TASK [Display configuration validation results] *******************************
+ok: [squid-server] => {
+    "msg": "Squid configuration is valid"
+}
+
+RUNNING HANDLER [restart_squid] ************************************************
+changed: [squid-server]
+
+PLAY RECAP ********************************************************************
+squid-server                : ok=7    changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+--------------------------------------------------
+Verification - Validate Squid Configuration Parse
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ ansible proxy_servers -i inventory/hosts.yml -m command -a "squid -k parse"
+Output
+squid-server | CHANGED | rc=0 >>
+2026/02/27 11:25:12| Processing Configuration File: /etc/squid/squid.conf (depth 0)
+2026/02/27 11:25:12| Initializing https:// proxy context
+2026/02/27 11:25:12| Parsed configuration file successfully.
+
+--------------------------------------------------
+Task 3.1 - Create Proxy Testing Playbook (Server-Side)
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ nano playbooks/test-squid.yml
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 3.2 - Create Client Testing Playbook
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ nano playbooks/client-test.yml
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+--------------------------------------------------
+Task 3.3 - Run Comprehensive Tests (Server-Side)
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ ansible-playbook -i inventory/hosts.yml playbooks/test-squid.yml
+Output
+PLAY [Test Squid Proxy Functionality] ******************************************
+
+TASK [Gathering Facts] ********************************************************
+ok: [squid-server]
+
+TASK [Check squid service status] *********************************************
+ok: [squid-server]
+
+TASK [Display squid service status] *******************************************
+ok: [squid-server] => {
+  "msg": "Squid service is active"
+}
+
+TASK [Check if squid port is listening] ***************************************
+ok: [squid-server]
+
+TASK [Test proxy connectivity from localhost] *********************************
+ok: [squid-server] => (item=http://httpbin.org/ip)
+ok: [squid-server] => (item=http://www.google.com)
+ok: [squid-server] => (item=http://www.example.com)
+
+TASK [Display proxy test results] *********************************************
+ok: [squid-server] => (item={'item': 'http://httpbin.org/ip', 'status': 200, 'url': 'http://httpbin.org/ip'}) => {
+  "msg": "URL: http://httpbin.org/ip - Status: 200"
+}
+ok: [squid-server] => (item={'item': 'http://www.google.com', 'status': 200, 'url': 'http://www.google.com'}) => {
+  "msg": "URL: http://www.google.com - Status: 200"
+}
+ok: [squid-server] => (item={'item': 'http://www.example.com', 'status': 200, 'url': 'http://www.example.com'}) => {
+  "msg": "URL: http://www.example.com - Status: 200"
+}
+
+TASK [Check squid access logs] ************************************************
+changed: [squid-server]
+
+TASK [Display recent access log entries] **************************************
+ok: [squid-server] => {
+  "access_logs.stdout_lines": [
+    "1709033162.124    112 127.0.0.1 TCP_MISS/200 476 GET http://httpbin.org/ip - HIER_DIRECT/44.215.203.60 text/plain",
+    "1709033163.011     98 127.0.0.1 TCP_MISS/200 17342 GET http://www.google.com/ - HIER_DIRECT/142.250.190.36 text/html",
+    "1709033163.720     65 127.0.0.1 TCP_MISS/200 1256 GET http://www.example.com/ - HIER_DIRECT/93.184.216.34 text/html"
+  ]
+}
+
+TASK [Generate proxy statistics] **********************************************
+changed: [squid-server]
+
+TASK [Display proxy statistics] ***********************************************
+ok: [squid-server] => {
+  "squid_stats.stdout_lines": [
+    "Squid Object Cache: Version 4.x",
+    "Start Time: Tue, 27 Feb 2026 11:25:17 GMT",
+    "Current Time: Tue, 27 Feb 2026 11:26:04 GMT",
+    "Service Name: squid",
+    "Number of clients accessing cache: 2",
+    "Number of HTTP requests received: 12",
+    "Average HTTP requests per minute since start: 15.4",
+    "Cache Hits as % of all requests: 0.0%",
+    "Cache Misses as % of all requests: 100.0%"
+  ]
+}
+
+PLAY RECAP ********************************************************************
+squid-server                : ok=11   changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+--------------------------------------------------
+Task 3.3 - Run Client-Side Tests
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ ansible-playbook -i inventory/hosts.yml playbooks/client-test.yml
+Output
+PLAY [Client-Side Proxy Testing] ***********************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [localhost]
+
+TASK [Test direct connection (without proxy)] **********************************
+ok: [localhost]
+
+TASK [Display direct connection IP] ********************************************
+ok: [localhost] => {
+  "msg": "Direct connection IP: 18.234.12.77"
+}
+
+TASK [Test connection through proxy] *******************************************
+ok: [localhost]
+
+TASK [Display proxy connection results] ****************************************
+ok: [localhost] => {
+  "msg": "Proxy connection IP: 192.168.1.100"
+}
+
+TASK [Test proxy with curl command] ********************************************
+changed: [localhost]
+
+TASK [Display curl test results] ************************************************
+ok: [localhost] => {
+  "curl_test.stdout": "{\n  \"headers\": {\n    \"Accept\": \"*/*\",\n    \"Host\": \"httpbin.org\",\n    \"User-Agent\": \"curl/7.61.1\",\n    \"X-Amzn-Trace-Id\": \"Root=1-67c07c6a-2f9f3b4a1d2c1c3a0c2e7b11\"\n  }\n}\n"
+}
+
+PLAY RECAP *********************************************************************
+localhost                   : ok=7    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+--------------------------------------------------
+Task 3.3 - Manual Client Machine Testing
+--------------------------------------------------
+
+Command Executed (Client Machine)
+toor@ip-172-31-10-246:~$ curl -x 192.168.1.100:3128 http://www.google.com
+Output
+<HTML><HEAD><meta http-equiv="content-type" content="text/html;charset=utf-8">
+<TITLE>302 Moved</TITLE></HEAD><BODY>
+<H1>302 Moved</H1>
+The document has moved
+<A HREF="http://www.google.com/">here</A>.
+</BODY></HTML>
+
+Command Executed (Client Machine)
+toor@ip-172-31-10-246:~$ curl -x 192.168.1.100:3128 -v http://httpbin.org/ip
+Output
+*   Trying 192.168.1.100:3128...
+* Connected to 192.168.1.100 (192.168.1.100) port 3128 (#0)
+> GET http://httpbin.org/ip HTTP/1.1
+> Host: httpbin.org
+> User-Agent: curl/8.5.0
+> Accept: */*
+> Proxy-Connection: Keep-Alive
+>
+< HTTP/1.1 200 OK
+< Server: gunicorn/19.9.0
+< Date: Tue, 27 Feb 2026 11:27:42 GMT
+< Content-Type: application/json
+< Content-Length: 32
+< Connection: keep-alive
+<
+{
+  "origin": "192.168.1.100"
+}
+* Connection #0 to host 192.168.1.100 left intact
+
+Command Executed (Client Machine)
+toor@ip-172-31-10-246:~$ curl -x 192.168.1.100:3128 https://httpbin.org/ip
+Output
+{
+  "origin": "192.168.1.100"
+}
+
+--------------------------------------------------
+Task 3.4 - Monitor and Verify Proxy Performance
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ nano playbooks/monitor-squid.yml
+Output
+(nano editor opened)
+
+Saved and exited nano.
+
+Command Executed
+-bash-4.2$ ansible-playbook -i inventory/hosts.yml playbooks/monitor-squid.yml
+Output
+PLAY [Monitor Squid Proxy Performance] *****************************************
+
+TASK [Gathering Facts] ********************************************************
+ok: [squid-server]
+
+TASK [Check squid cache statistics] *******************************************
+changed: [squid-server]
+
+TASK [Display cache statistics] ***********************************************
+ok: [squid-server] => {
+  "cache_stats.stdout_lines": [
+    "Store Directory #0: /var/spool/squid",
+    "Maximum Size: 1000 MB",
+    "Current Size: 0 MB",
+    "Percent Used: 0%",
+    "Filemap bits in use: 0 of 16384"
+  ]
+}
+
+TASK [Check memory usage] *****************************************************
+changed: [squid-server]
+
+TASK [Display memory statistics] **********************************************
+ok: [squid-server] => {
+  "memory_stats.stdout_lines": [
+    "Memory accounting:",
+    "  Total accounted: 32.0 MB",
+    "  MemPool Allocated: 12.3 MB",
+    "  MemPool In Use: 9.7 MB",
+    "  Overhead: 2.6 MB"
+  ]
+}
+
+TASK [Monitor active connections] *********************************************
+changed: [squid-server]
+
+TASK [Display active connections] *********************************************
+ok: [squid-server] => {
+  "connections.stdout_lines": [
+    "tcp        0      0 0.0.0.0:3128            0.0.0.0:*               LISTEN",
+    "tcp        0      0 127.0.0.1:3128          127.0.0.1:51642         ESTABLISHED"
+  ]
+}
+
+TASK [Check disk usage for cache directory] ***********************************
+changed: [squid-server]
+
+TASK [Display disk usage] *****************************************************
+ok: [squid-server] => {
+  "disk_usage.stdout_lines": [
+    "Filesystem      Size  Used Avail Use% Mounted on",
+    "/dev/nvme0n1p1   32G  5.1G   27G  16% /"
+  ]
+}
+
+PLAY RECAP ********************************************************************
+squid-server                : ok=9    changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+--------------------------------------------------
+Troubleshooting Checks - Issue 1: Squid Service Fails to Start
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ ansible proxy_servers -i inventory/hosts.yml -m command -a "squid -k parse"
+Output
+squid-server | CHANGED | rc=0 >>
+2026/02/27 11:29:31| Processing Configuration File: /etc/squid/squid.conf (depth 0)
+2026/02/27 11:29:31| Parsed configuration file successfully.
+
+Command Executed
+-bash-4.2$ ansible proxy_servers -i inventory/hosts.yml -m command -a "journalctl -u squid -n 50"
+Output
+squid-server | CHANGED | rc=0 >>
+-- Logs begin at Tue 2026-02-27 10:58:01 UTC, end at Tue 2026-02-27 11:29:55 UTC. --
+Feb 27 11:25:17 squid-server systemd[1]: Started Squid caching proxy.
+Feb 27 11:25:17 squid-server squid[1762]: Squid Parent: will start 1 kids
+Feb 27 11:25:17 squid-server squid[1762]: Squid Parent: (squid-1) process 1764 started
+Feb 27 11:25:18 squid-server squid[1764]: Accepting HTTP Socket connections at 0.0.0.0:3128, FD 12.
+
+Command Executed
+-bash-4.2$ ansible proxy_servers -i inventory/hosts.yml -m command -a "ls -la /var/spool/squid"
+Output
+squid-server | CHANGED | rc=0 >>
+total 16
+drwxr-xr-x  4 squid squid 4096 Feb 27 11:18 .
+drwxr-xr-x 20 root  root  4096 Feb 27 11:17 ..
+drwxr-xr-x  2 squid squid 4096 Feb 27 11:18 00
+drwxr-xr-x  2 squid squid 4096 Feb 27 11:18 01
+
+--------------------------------------------------
+Troubleshooting Checks - Issue 2: Proxy Connection Refused
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ ansible proxy_servers -i inventory/hosts.yml -m command -a "firewall-cmd --list-ports"
+Output
+squid-server | CHANGED | rc=0 >>
+3128/tcp
+
+Command Executed
+-bash-4.2$ ansible proxy_servers -i inventory/hosts.yml -m command -a "netstat -tlnp | grep 3128"
+Output
+squid-server | CHANGED | rc=0 >>
+tcp        0      0 0.0.0.0:3128            0.0.0.0:*               LISTEN      1764/(squid-1)
+
+==================================================
+End of Lab 06 Output Log
+==================================================
