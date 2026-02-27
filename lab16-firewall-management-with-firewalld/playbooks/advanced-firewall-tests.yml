@@ -1,0 +1,70 @@
+---
+- name: Advanced Firewall Testing and Validation
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Test firewall rule effectiveness
+      block:
+        - name: Attempt connection to blocked port
+          wait_for:
+            host: "{{ ansible_default_ipv4.address }}"
+            port: 9999
+            timeout: 5
+          register: blocked_port_test
+          failed_when: false
+
+        - name: Verify blocked port is actually blocked
+          assert:
+            that:
+              - blocked_port_test.failed
+            fail_msg: "Port 9999 should be blocked but is accessible"
+            success_msg: "Port 9999 is properly blocked"
+
+    - name: Validate zone assignments
+      shell: firewall-cmd --get-zone-of-interface={{ ansible_default_ipv4.interface }}
+      register: interface_zone
+      changed_when: false
+
+    - name: Display interface zone assignment
+      debug:
+        msg: "Interface {{ ansible_default_ipv4.interface }} is in zone: {{ interface_zone.stdout }}"
+
+    - name: Check for firewall rule conflicts
+      shell: |
+        firewall-cmd --list-all-zones | grep -A 10 -B 2 "services:"
+      register: zone_analysis
+      changed_when: false
+
+    - name: Generate firewall configuration report
+      copy:
+        content: |
+          Firewall Configuration Report
+          ============================
+          Generated: {{ ansible_date_time.iso8601 }}
+          Host: {{ inventory_hostname }}
+
+          Active Zones:
+          {{ current_zones.stdout if current_zones is defined else 'N/A' }}
+
+          Default Zone:
+          {{ default_zone.stdout if default_zone is defined else 'N/A' }}
+
+          Interface Assignments:
+          {{ interface_zone.stdout if interface_zone is defined else 'N/A' }}
+
+          Rich Rules:
+          {% if rich_rules is defined %}
+          {% for rule in rich_rules.stdout_lines %}
+          {{ rule }}
+          {% endfor %}
+          {% else %}
+          N/A
+          {% endif %}
+        dest: "/tmp/firewall-report-{{ inventory_hostname }}.txt"
+
+    - name: Fetch firewall reports
+      fetch:
+        src: "/tmp/firewall-report-{{ inventory_hostname }}.txt"
+        dest: "./reports/"
+        flat: yes
