@@ -1,0 +1,149 @@
+---
+- name: Comprehensive Backup and Restore Testing
+  hosts: database_servers
+  become: yes
+  vars:
+    backup_dir: "/opt/mariadb-backups"
+    mysql_root_password: ""
+    test_database: "test_backup_db"
+
+  tasks:
+    - name: Create test database with sample data
+      community.mysql.mysql_db:
+        name: "{{ test_database }}"
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+
+    - name: Create test table and insert data
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_db: "{{ test_database }}"
+        query: |
+          CREATE TABLE IF NOT EXISTS test_data (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            test_value VARCHAR(100),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          INSERT INTO test_data (test_value) VALUES
+          ('Original Data 1'),
+          ('Original Data 2'),
+          ('Original Data 3');
+
+    - name: Get original data count
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_db: "{{ test_database }}"
+        query: "SELECT COUNT(*) as count FROM test_data"
+      register: original_count
+
+    - name: Display original data
+      debug:
+        msg: "Original record count: {{ original_count.query_result[0][0].count }}"
+
+    - name: Run backup for test database
+      shell: |
+        mysqldump --single-transaction -u root {{ '-p' + mysql_root_password if mysql_root_password else '' }} \
+        {{ test_database }} | gzip > {{ backup_dir }}/test_backup_{{ ansible_date_time.epoch }}.sql.gz
+      register: test_backup_result
+
+    - name: Verify backup file was created
+      stat:
+        path: "{{ backup_dir }}/test_backup_{{ ansible_date_time.epoch }}.sql.gz"
+      register: backup_file_stat
+
+    - name: Fail if backup file doesn't exist or is empty
+      fail:
+        msg: "Backup file was not created or is empty"
+      when: not backup_file_stat.stat.exists or backup_file_stat.stat.size == 0
+
+    - name: Modify test data (simulate data changes)
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_db: "{{ test_database }}"
+        query: |
+          DELETE FROM test_data WHERE id = 1;
+          INSERT INTO test_data (test_value) VALUES ('Modified Data');
+          UPDATE test_data SET test_value = 'Updated Data' WHERE id = 2;
+
+    - name: Get modified data count
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_db: "{{ test_database }}"
+        query: "SELECT COUNT(*) as count FROM test_data"
+      register: modified_count
+
+    - name: Display modified data count
+      debug:
+        msg: "Modified record count: {{ modified_count.query_result[0][0].count }}"
+
+    - name: Drop test database to simulate data loss
+      community.mysql.mysql_db:
+        name: "{{ test_database }}"
+        state: absent
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+
+    - name: Verify database was dropped
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        query: "SHOW DATABASES LIKE '{{ test_database }}'"
+      register: db_check_after_drop
+
+    - name: Restore test database from backup
+      shell: |
+        zcat {{ backup_dir }}/test_backup_{{ ansible_date_time.epoch }}.sql.gz | mysql -u root {{ '-p' + mysql_root_password if mysql_root_password else '' }}
+      register: restore_result
+
+    - name: Verify database was restored
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        query: "SHOW DATABASES LIKE '{{ test_database }}'"
+      register: db_check_after_restore
+
+    - name: Get restored data count
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_db: "{{ test_database }}"
+        query: "SELECT COUNT(*) as count FROM test_data"
+      register: restored_count
+
+    - name: Verify data integrity
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_db: "{{ test_database }}"
+        query: "SELECT * FROM test_data ORDER BY id"
+      register: restored_data
+
+    - name: Display test results
+      debug:
+        msg: |
+          Backup and Restore Test Results:
+          - Original Count: {{ original_count.query_result[0][0].count }}
+          - Modified Count: {{ modified_count.query_result[0][0].count }}
+          - Restored Count: {{ restored_count.query_result[0][0].count }}
+          - Data Integrity: {{ 'PASSED' if restored_count.query_result[0][0].count == original_count.query_result[0][0].count else 'FAILED' }}
+          - Backup File Size: {{ backup_file_stat.stat.size }} bytes
+
+    - name: Clean up test backup file
+      file:
+        path: "{{ backup_dir }}/test_backup_{{ ansible_date_time.epoch }}.sql.gz"
+        state: absent
+
+    - name: Test result summary
+      debug:
+        msg: |
+          TEST SUMMARY:
+          ✓ Backup Creation: {{ 'PASSED' if backup_file_stat.stat.exists else 'FAILED' }}
+          ✓ Database Drop: {{ 'PASSED' if db_check_after_drop.query_result | length == 0 else 'FAILED' }}
+          ✓ Database Restore: {{ 'PASSED' if db_check_after_restore.query_result | length > 0 else 'FAILED' }}
+          ✓ Data Integrity: {{ 'PASSED' if restored_count.query_result[0][0].count == original_count.query_result[0][0].count else 'FAILED' }}
