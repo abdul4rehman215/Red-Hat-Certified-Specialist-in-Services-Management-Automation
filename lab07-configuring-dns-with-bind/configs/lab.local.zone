@@ -1,0 +1,47 @@
+$TTL 86400
+@ IN SOA ns1.lab.local. admin.lab.local. (
+ 2023110802 ; Serial number (YYYYMMDDNN)
+ 3600 ; Refresh (1 hour)
+ 1800 ; Retry (30 minutes)
+ 604800 ; Expire (1 week)
+ 86400 ; Minimum TTL (1 day)
+)
+
+; Name servers
+@ IN NS ns1.lab.local.
+@ IN NS ns2.lab.local.
+
+; A records (hostname to IP address)
+ns1 IN A 192.168.1.10
+ns2 IN A 192.168.1.11
+web IN A 192.168.1.20
+mail IN A 192.168.1.30
+ftp IN A 192.168.1.40
+db IN A 192.168.1.50
+
+; CNAME records (aliases)
+www IN CNAME web.lab.local.
+webserver IN CNAME web.lab.local.
+mailserver IN CNAME mail.lab.local.
+database IN CNAME db.lab.local.
+
+; MX record for mail
+@ IN MX 10 mail.lab.local.
+
+; Additional A records for testing
+server1 IN A 192.168.1.100
+server2 IN A 192.168.1.101
+server3 IN A 192.168.1.102
+
+; TXT records for verification and information
+@ IN TXT "v=spf1 mx -all"
+_dmarc IN TXT "v=DMARC1; p=none; rua=mailto:admin@lab.local"
+
+; SRV records for services
+_http._tcp IN SRV 10 5 80 web.lab.local.
+_https._tcp IN SRV 10 5 443 web.lab.local.
+_ftp._tcp IN SRV 10 5 21 ftp.lab.local.
+
+; Additional CNAME records
+intranet IN CNAME web.lab.local.
+portal IN CNAME web.lab.local.
