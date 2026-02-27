@@ -1,0 +1,8 @@
+- name: Check client current IP
+  ansible.builtin.shell: ip addr show | grep "inet " | grep -v "127.0.0.1" | head -5
+  register: client_ip
+  changed_when: false
+
+- name: Show client IP info
+  ansible.builtin.debug:
+    msg: "{{ client_ip.stdout_lines }}"
