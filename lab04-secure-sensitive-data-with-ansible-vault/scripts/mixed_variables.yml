@@ -1,0 +1,46 @@
+---
+- name: Mixed Variables Example
+  hosts: localhost
+  vars:
+    # Non-sensitive variables (plain text)
+    app_name: "MySecureApp"
+    app_version: "1.2.3"
+    environment: "production"
+
+  vars_files:
+    # Sensitive variables (encrypted)
+    - secrets.yml
+
+  tasks:
+    - name: Display application info
+      debug:
+        msg: |
+          Application: {{ app_name }}
+          Version: {{ app_version }}
+          Environment: {{ environment }}
+          Database Host: {{ db_host }}
+          Database User: {{ db_user }}
+
+    - name: Create application configuration
+      copy:
+        content: |
+          # Application Configuration
+          APP_NAME={{ app_name }}
+          APP_VERSION={{ app_version }}
+          ENVIRONMENT={{ environment }}
+
+          # Database Configuration (from vault)
+          DB_HOST={{ db_host }}
+          DB_PORT={{ db_port }}
+          DB_USER={{ db_user }}
+          DB_PASSWORD={{ db_password }}
+
+          # API Configuration (from vault)
+          API_KEY={{ api_key }}
+          API_SECRET={{ api_secret }}
+        dest: /tmp/complete_app_config.env
+        mode: '0600'
+
+    - name: Display success message
+      debug:
+        msg: "Configuration file created successfully with mixed variables"
