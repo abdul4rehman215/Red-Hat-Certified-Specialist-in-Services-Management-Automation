@@ -1,0 +1,62 @@
+---
+- name: Install and Configure DHCP Server
+  hosts: dhcp_servers
+  become: yes
+  vars:
+    dhcp_subnet: "192.168.1.0"
+    dhcp_netmask: "255.255.255.0"
+    dhcp_range_start: "192.168.1.100"
+    dhcp_range_end: "192.168.1.200"
+    dhcp_gateway: "192.168.1.1"
+    dhcp_dns_servers:
+      - "8.8.8.8"
+      - "8.8.4.4"
+    dhcp_domain_name: "lab.local"
+    dhcp_lease_time: "86400" # 24 hours in seconds
+
+  tasks:
+    - name: Install DHCP server package
+      yum:
+        name: dhcp-server
+        state: present
+
+    - name: Create DHCP configuration directory backup
+      file:
+        path: /etc/dhcp/backup
+        state: directory
+        mode: '0755'
+
+    - name: Backup original DHCP configuration
+      copy:
+        src: /etc/dhcp/dhcpd.conf
+        dest: /etc/dhcp/backup/dhcpd.conf.original
+        remote_src: yes
+        backup: yes
+      ignore_errors: yes
+
+    - name: Generate DHCP server configuration
+      template:
+        src: dhcpd.conf.j2
+        dest: /etc/dhcp/dhcpd.conf
+        backup: yes
+        mode: '0644'
+      notify: restart dhcpd
+
+    - name: Enable and start DHCP service
+      systemd:
+        name: dhcpd
+        enabled: yes
+        state: started
+
+    - name: Configure firewall for DHCP
+      firewalld:
+        service: dhcp
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+  handlers:
+    - name: restart dhcpd
+      systemd:
+        name: dhcpd
+        state: restarted
