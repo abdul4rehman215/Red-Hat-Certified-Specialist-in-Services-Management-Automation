@@ -1,0 +1,6 @@
+# NFS Mounts
+nfs-server:/ /mnt/nfs/shared nfs4 defaults,_netdev 0 0
+nfs-server:/documents /mnt/nfs/documents nfs4 defaults,_netdev 0 0
+nfs-server:/projects /mnt/nfs/projects nfs4 defaults,_netdev 0 0
+nfs-server:/public /mnt/nfs/public nfs4 ro,defaults,_netdev 0 0
+nfs-server:/home /mnt/nfs/home nfs4 defaults,_netdev 0 0
