@@ -1,0 +1,45 @@
+---
+- name: Monitor Squid Proxy Performance
+  hosts: proxy_servers
+  become: yes
+
+  tasks:
+    - name: Check squid cache statistics
+      command: squidclient mgr:storedir
+      register: cache_stats
+      tags: cache_monitoring
+
+    - name: Display cache statistics
+      debug:
+        var: cache_stats.stdout_lines
+      tags: cache_monitoring
+
+    - name: Check memory usage
+      command: squidclient mgr:mem
+      register: memory_stats
+      tags: memory_monitoring
+
+    - name: Display memory statistics
+      debug:
+        var: memory_stats.stdout_lines
+      tags: memory_monitoring
+
+    - name: Monitor active connections
+      command: netstat -an | grep :3128
+      register: connections
+      tags: connection_monitoring
+
+    - name: Display active connections
+      debug:
+        var: connections.stdout_lines
+      tags: connection_monitoring
+
+    - name: Check disk usage for cache directory
+      command: df -h /var/spool/squid
+      register: disk_usage
+      tags: disk_monitoring
+
+    - name: Display disk usage
+      debug:
+        var: disk_usage.stdout_lines
+      tags: disk_monitoring
