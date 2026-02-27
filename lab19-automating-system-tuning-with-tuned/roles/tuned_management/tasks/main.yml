@@ -1,0 +1,47 @@
+---
+- name: Install tuned package
+  package:
+    name:
+      - tuned
+      - tuned-utils
+    state: present
+  become: yes
+
+- name: Start and enable tuned service
+  systemd:
+    name: tuned
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Create custom tuned profile directory
+  file:
+    path: "/etc/tuned/{{ tuned_profile }}"
+    state: directory
+    mode: '0755'
+  become: yes
+  when: tuned_profile not in ['balanced', 'throughput-performance', 'latency-performance', 'desktop', 'powersave']
+
+- name: Deploy custom tuned profile configuration
+  template:
+    src: "{{ tuned_profile }}.conf.j2"
+    dest: "/etc/tuned/{{ tuned_profile }}/tuned.conf"
+    mode: '0644'
+  become: yes
+  when: tuned_profile not in ['balanced', 'throughput-performance', 'latency-performance', 'desktop', 'powersave']
+  notify: restart tuned
+
+- name: Apply tuned profile
+  command: "tuned-adm profile {{ tuned_profile }}"
+  become: yes
+  register: tuned_result
+  changed_when: "'profile' in tuned_result.stdout or tuned_result.rc == 0"
+
+- name: Verify tuned profile is active
+  command: tuned-adm active
+  register: active_profile
+  changed_when: false
+
+- name: Display active profile
+  debug:
+    msg: "Active tuned profile: {{ active_profile.stdout }}"
