@@ -1,0 +1,38 @@
+---
+- name: Configure Web Servers
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Install Apache HTTP Server
+      yum:
+        name: httpd
+        state: present
+
+    - name: Start and enable Apache service
+      systemd:
+        name: httpd
+        state: started
+        enabled: yes
+
+    - name: Create a simple index page
+      copy:
+        content: |
+          <html>
+          <head><title>Ansible Lab Server</title></head>
+          <body>
+          <h1>Welcome to {{ ansible_hostname }}</h1>
+          <p>This server was configured by Ansible!</p>
+          <p>Server IP: {{ ansible_default_ipv4.address }}</p>
+          </body>
+          </html>
+        dest: /var/www/html/index.html
+        owner: apache
+        group: apache
+        mode: '0644'
+
+    - name: Open firewall for HTTP
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
