@@ -1,0 +1,61 @@
+---
+- name: MariaDB Selective Database Restore
+  hosts: database_servers
+  become: yes
+  vars:
+    backup_dir: "/opt/mariadb-backups"
+    mysql_root_password: ""
+    restore_date: "{{ restore_target_date | default(ansible_date_time.date) }}"
+    databases_to_restore: "{{ target_databases | default(['company_db']) }}"
+
+  tasks:
+    - name: Display restore parameters
+      debug:
+        msg: |
+          Selective Restore Parameters:
+          - Target Databases: {{ databases_to_restore }}
+          - Restore Date: {{ restore_date }}
+          - Backup Directory: {{ backup_dir }}/{{ restore_date }}
+
+    - name: Find exact backup files for each database
+      find:
+        paths: "{{ backup_dir }}/{{ restore_date }}"
+        patterns: "{{ item }}_*.sql.gz"
+      loop: "{{ databases_to_restore }}"
+      register: database_backup_files
+
+    - name: Create backup of current databases before restore
+      shell: |
+        mysqldump --single-transaction -u root {{ '-p' + mysql_root_password if mysql_root_password else '' }} \
+        {{ item }} | gzip > {{ backup_dir }}/pre_restore_{{ item }}_{{ ansible_date_time.epoch }}.sql.gz
+      loop: "{{ databases_to_restore }}"
+      ignore_errors: yes
+
+    - name: Drop existing databases (if they exist)
+      community.mysql.mysql_db:
+        name: "{{ item }}"
+        state: absent
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+      loop: "{{ databases_to_restore }}"
+      when: drop_before_restore | default(false) | bool
+
+    - name: Restore selected databases
+      shell: |
+        zcat {{ item.files[0].path }} | mysql -u root {{ '-p' + mysql_root_password if mysql_root_password else '' }}
+      loop: "{{ database_backup_files.results }}"
+      when: item.files | length > 0
+      register: selective_restore_results
+
+    - name: Verify restored databases
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        query: "SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = '{{ item }}'"
+      loop: "{{ databases_to_restore }}"
+      register: table_counts
+
+    - name: Display verification results
+      debug:
+        msg: "Database {{ item.item }} has {{ item.query_result[0][0].table_count }} tables"
+      loop: "{{ table_counts.results }}"
