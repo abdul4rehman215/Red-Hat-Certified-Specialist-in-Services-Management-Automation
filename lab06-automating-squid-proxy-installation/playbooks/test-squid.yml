@@ -1,0 +1,71 @@
+---
+- name: Test Squid Proxy Functionality
+  hosts: proxy_servers
+  become: yes
+  vars:
+    squid_port: 3128
+    test_urls:
+      - http://httpbin.org/ip
+      - http://www.google.com
+      - http://www.example.com
+
+  tasks:
+    - name: Check squid service status
+      systemd:
+        name: squid
+        state: started
+      register: squid_service
+      tags: service_check
+
+    - name: Display squid service status
+      debug:
+        msg: "Squid service is {{ squid_service.status.ActiveState }}"
+      tags: service_check
+
+    - name: Check if squid port is listening
+      wait_for:
+        port: "{{ squid_port }}"
+        host: "{{ ansible_default_ipv4.address }}"
+        timeout: 10
+      tags: port_check
+
+    - name: Test proxy connectivity from localhost
+      uri:
+        url: "{{ item }}"
+        method: GET
+        timeout: 30
+      environment:
+        http_proxy: "http://127.0.0.1:{{ squid_port }}"
+        https_proxy: "http://127.0.0.1:{{ squid_port }}"
+      loop: "{{ test_urls }}"
+      register: proxy_tests
+      ignore_errors: yes
+      tags: connectivity_test
+
+    - name: Display proxy test results
+      debug:
+        msg: "URL: {{ item.item }} - Status: {{ item.status | default('Failed') }}"
+      loop: "{{ proxy_tests.results }}"
+      tags: test_results
+
+    - name: Check squid access logs
+      command: tail -n 20 /var/log/squid/access.log
+      register: access_logs
+      tags: log_check
+
+    - name: Display recent access log entries
+      debug:
+        var: access_logs.stdout_lines
+      tags: log_check
+
+    - name: Generate proxy statistics
+      command: squidclient -h 127.0.0.1 -p {{ squid_port }} mgr:info
+      register: squid_stats
+      ignore_errors: yes
+      tags: statistics
+
+    - name: Display proxy statistics
+      debug:
+        var: squid_stats.stdout_lines
+      when: squid_stats.rc == 0
+      tags: statistics
