@@ -1,0 +1,64 @@
+---
+- name: Configure Web Application Security Rules
+  hosts: webservers
+  become: yes
+  vars:
+    allowed_web_ips:
+      - "192.168.1.0/24"
+      - "172.16.0.0/16"
+    blocked_countries:
+      - "10.0.0.0/8" # Example blocked range
+
+  tasks:
+    - name: Create web-dmz zone for web applications
+      firewalld:
+        zone: web-dmz
+        state: present
+        permanent: yes
+        immediate: yes
+
+    - name: Configure web-dmz zone with HTTP/HTTPS only
+      firewalld:
+        service: "{{ item }}"
+        zone: web-dmz
+        permanent: yes
+        immediate: yes
+        state: enabled
+      loop:
+        - http
+        - https
+
+    - name: Allow web traffic from specific networks only
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="{{ item }}" service name="http" accept'
+        zone: web-dmz
+        permanent: yes
+        immediate: yes
+        state: enabled
+      loop: "{{ allowed_web_ips }}"
+
+    - name: Allow HTTPS traffic from specific networks only
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="{{ item }}" service name="https" accept'
+        zone: web-dmz
+        permanent: yes
+        immediate: yes
+        state: enabled
+      loop: "{{ allowed_web_ips }}"
+
+    - name: Block suspicious IP ranges
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="{{ item }}" drop'
+        zone: public
+        permanent: yes
+        immediate: yes
+        state: enabled
+      loop: "{{ blocked_countries }}"
+
+    - name: Rate limit SSH connections
+      firewalld:
+        rich_rule: 'rule service name="ssh" accept limit value="3/m"'
+        zone: public
+        permanent: yes
+        immediate: yes
+        state: enabled
