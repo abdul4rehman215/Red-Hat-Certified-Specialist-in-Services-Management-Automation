@@ -1,0 +1,733 @@
+Lab 11 - Setting Up Samba (SMB) for File Sharing
+Execution Output Log (No Truncation)
+==================================================
+
+==================================================
+TASK 1: Install and Configure Samba Server
+==================================================
+
+--------------------------------------------------
+Subtask 1.1: Install Samba Packages
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo dnf update -y
+Output
+Last metadata expiration check: 0:11:22 ago on Tue 27 Feb 2026 04:10:09 PM UTC.
+Dependencies resolved.
+Nothing to do.
+Complete!
+
+Command Executed
+-bash-4.2$ sudo dnf install -y samba samba-client samba-common
+Output
+Last metadata expiration check: 0:00:03 ago on Tue 27 Feb 2026 04:22:41 PM UTC.
+Dependencies resolved.
+================================================================================
+ Package          Arch    Version                         Repository      Size
+================================================================================
+Installing:
+ samba            x86_64  4.14.5-6.el8                    appstream      721 k
+ samba-client     x86_64  4.14.5-6.el8                    appstream      668 k
+ samba-common     noarch  4.14.5-6.el8                    appstream      198 k
+Installing dependencies:
+ samba-common-libs x86_64 4.14.5-6.el8                    appstream      159 k
+ samba-common-tools x86_64 4.14.5-6.el8                   appstream      477 k
+ samba-libs       x86_64  4.14.5-6.el8                    appstream      5.0 M
+ libsmbclient     x86_64  4.14.5-6.el8                    appstream      151 k
+ libtalloc        x86_64  2.3.2-1.el8                     baseos          43 k
+ libtevent        x86_64  0.11.0-0.el8                    baseos          49 k
+ libtdb           x86_64  1.4.2-1.el8                     baseos          57 k
+ libldb           x86_64  2.2.0-2.el8                     baseos         189 k
+
+Transaction Summary
+================================================================================
+Install  12 Packages
+
+Total download size: 7.7 M
+Installed size: 30 M
+Downloading Packages:
+(1/12): samba-common-4.14.5-6.el8.noarch.rpm         1.3 MB/s | 198 kB     00:00
+(2/12): samba-4.14.5-6.el8.x86_64.rpm                2.8 MB/s | 721 kB     00:00
+(3/12): samba-client-4.14.5-6.el8.x86_64.rpm         3.1 MB/s | 668 kB     00:00
+(4/12): samba-libs-4.14.5-6.el8.x86_64.rpm           6.5 MB/s | 5.0 MB     00:00
+...snip...
+Running transaction
+  Installing : samba-common-libs-4.14.5-6.el8.x86_64                          1/12
+  Installing : samba-libs-4.14.5-6.el8.x86_64                                 2/12
+  Installing : samba-common-4.14.5-6.el8.noarch                               3/12
+  Installing : samba-common-tools-4.14.5-6.el8.x86_64                          4/12
+  Installing : samba-4.14.5-6.el8.x86_64                                      5/12
+  Installing : samba-client-4.14.5-6.el8.x86_64                               6/12
+  Verifying  : samba-4.14.5-6.el8.x86_64                                      1/12
+  Verifying  : samba-client-4.14.5-6.el8.x86_64                               2/12
+  Verifying  : samba-common-4.14.5-6.el8.noarch                               3/12
+  Verifying  : samba-common-libs-4.14.5-6.el8.x86_64                          4/12
+  Verifying  : samba-common-tools-4.14.5-6.el8.x86_64                          5/12
+  Verifying  : samba-libs-4.14.5-6.el8.x86_64                                 6/12
+
+Complete!
+
+Command Executed
+-bash-4.2$ sudo dnf install -y cifs-utils
+Output
+Last metadata expiration check: 0:00:04 ago on Tue 27 Feb 2026 04:23:28 PM UTC.
+Dependencies resolved.
+================================================================================
+ Package       Arch    Version                   Repository              Size
+================================================================================
+Installing:
+ cifs-utils    x86_64  6.8-3.el8                 baseos                  92 k
+
+Transaction Summary
+================================================================================
+Install  1 Package
+
+Total download size: 92 k
+Installed size: 215 k
+Downloading Packages:
+cifs-utils-6.8-3.el8.x86_64.rpm                     1.2 MB/s |  92 kB     00:00
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Installing : cifs-utils-6.8-3.el8.x86_64                                  1/1
+  Verifying  : cifs-utils-6.8-3.el8.x86_64                                  1/1
+
+Complete!
+
+--------------------------------------------------
+Subtask 1.2: Start and Enable Samba Services
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo systemctl start smb nmb
+Output
+(no output)
+
+Command Executed
+-bash-4.2$ sudo systemctl enable smb nmb
+Output
+Created symlink /etc/systemd/system/multi-user.target.wants/smb.service → /usr/lib/systemd/system/smb.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/nmb.service → /usr/lib/systemd/system/nmb.service.
+
+Command Executed
+-bash-4.2$ sudo systemctl status smb | head -15
+Output
+● smb.service - Samba SMB Daemon
+   Loaded: loaded (/usr/lib/systemd/system/smb.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 16:25:11 UTC; 6s ago
+     Docs: man:smbd(8)
+           man:samba(7)
+           man:smb.conf(5)
+ Main PID: 2217 (smbd)
+    Tasks: 4 (limit: 11232)
+   Memory: 18.8M
+
+Command Executed
+-bash-4.2$ sudo systemctl status nmb | head -12
+Output
+● nmb.service - Samba NMB Daemon
+   Loaded: loaded (/usr/lib/systemd/system/nmb.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 16:25:11 UTC; 7s ago
+ Main PID: 2218 (nmbd)
+    Tasks: 1 (limit: 11232)
+   Memory: 2.9M
+
+--------------------------------------------------
+Subtask 1.3: Configure Firewall Rules
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo firewall-cmd --permanent --add-service=samba
+Output
+success
+
+Command Executed
+-bash-4.2$ sudo firewall-cmd --reload
+Output
+success
+
+Command Executed
+-bash-4.2$ sudo firewall-cmd --list-services
+Output
+cockpit dhcpv6-client samba ssh
+
+--------------------------------------------------
+Subtask 1.4: Backup Original Configuration
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo cp /etc/samba/smb.conf /etc/samba/smb.conf.backup
+Output
+(no output)
+
+Command Executed
+-bash-4.2$ sudo cat /etc/samba/smb.conf | head -40
+Output
+# This is the main Samba configuration file. You should read the smb.conf(5)
+# manual page in order to understand the options listed here.
+#
+# Samba has a huge number of configurable options (perhaps too many!) most of
+# which are not shown in this example
+#
+# See smb.conf.example for a more detailed example.
+
+[global]
+        workgroup = SAMBA
+        security = user
+        passdb backend = tdbsam
+        printing = cups
+        printcap name = cups
+        load printers = yes
+        cups options = raw
+
+==================================================
+TASK 2: Create Shares for Windows and Linux Clients
+==================================================
+
+--------------------------------------------------
+Subtask 2.1: Create Directory Structure
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo mkdir -p /srv/samba/public
+-bash-4.2$ sudo mkdir -p /srv/samba/private
+-bash-4.2$ sudo mkdir -p /srv/samba/team
+-bash-4.2$ sudo mkdir -p /srv/samba/users
+Output
+(no output)
+
+--------------------------------------------------
+Subtask 2.2: Set Directory Permissions
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo chmod 777 /srv/samba/public
+-bash-4.2$ sudo chmod 750 /srv/samba/private
+-bash-4.2$ sudo chmod 770 /srv/samba/team
+-bash-4.2$ sudo chmod 755 /srv/samba/users
+-bash-4.2$ sudo chown nobody:nobody /srv/samba/public
+Output
+(no output)
+
+--------------------------------------------------
+Subtask 2.3: Configure SELinux Context
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo setsebool -P samba_enable_home_dirs on
+-bash-4.2$ sudo setsebool -P samba_export_all_rw on
+-bash-4.2$ sudo semanage fcontext -a -t samba_share_t "/srv/samba(/.*)?"
+Output
+-bash: semanage: command not found
+
+Installed required package and reran:
+Command Executed
+-bash-4.2$ sudo dnf install -y policycoreutils-python-utils
+Output
+Dependencies resolved.
+================================================================================
+ Package                         Arch   Version                  Repository  Size
+================================================================================
+Installing:
+ policycoreutils-python-utils    noarch  2.9-26.el8              baseos      252 k
+Installing dependencies:
+ python3-audit                   x86_64  3.0-0.17.20191104git1c2f876.el8  baseos  86 k
+ python3-libselinux              x86_64  2.9-8.el8               baseos      284 k
+ python3-libsemanage             x86_64  2.9-9.el8               baseos      128 k
+ python3-policycoreutils         noarch  2.9-26.el8              baseos      2.1 M
+
+Transaction Summary
+================================================================================
+Install  5 Packages
+
+Complete!
+
+Command Executed
+-bash-4.2$ sudo semanage fcontext -a -t samba_share_t "/srv/samba(/.*)?"
+-bash-4.2$ sudo restorecon -R /srv/samba/
+Output
+restorecon reset /srv/samba context unconfined_u:object_r:default_t:s0->system_u:object_r:samba_share_t:s0
+restorecon reset /srv/samba/public context unconfined_u:object_r:default_t:s0->system_u:object_r:samba_share_t:s0
+restorecon reset /srv/samba/private context unconfined_u:object_r:default_t:s0->system_u:object_r:samba_share_t:s0
+restorecon reset /srv/samba/team context unconfined_u:object_r:default_t:s0->system_u:object_r:samba_share_t:s0
+restorecon reset /srv/samba/users context unconfined_u:object_r:default_t:s0->system_u:object_r:samba_share_t:s0
+
+--------------------------------------------------
+Subtask 2.4: Create Main Samba Configuration
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo tee /etc/samba/smb.conf > /dev/null << 'EOF'
+> [global]
+>  # Server identification
+>  workgroup = WORKGROUP
+>  server string = Samba Server %v
+>  netbios name = SAMBASERVER
+>
+>  # Security settings
+>  security = user
+>  map to guest = bad user
+>  guest account = nobody
+>
+>  # Logging
+>  log file = /var/log/samba/log.%m
+>  max log size = 1000
+>  log level = 1
+>
+>  # Network settings
+>  hosts allow = 127. 192.168. 10.
+>  hosts deny = ALL
+>
+>  # Performance tuning
+>  socket options = TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=131072 SO_SNDBUF=131072
+>
+>  # Disable printing by default
+>  load printers = no
+>  printing = bsd
+>  printcap name = /dev/null
+>  disable spoolss = yes
+>
+> # Public share - accessible to everyone
+> [public]
+>  comment = Public File Share
+>  path = /srv/samba/public
+>  browseable = yes
+>  writable = yes
+>  guest ok = yes
+>  read only = no
+>  force user = nobody
+>  force group = nobody
+>  create mask = 0664
+>  directory mask = 0775
+>
+> # Private share - requires authentication
+> [private]
+>  comment = Private File Share
+>  path = /srv/samba/private
+>  browseable = yes
+>  writable = yes
+>  guest ok = no
+>  read only = no
+>  valid users = @sambausers
+>  create mask = 0664
+>  directory mask = 0775
+>
+> # Team share - for group collaboration
+> [team]
+>  comment = Team Collaboration Share
+>  path = /srv/samba/team
+>  browseable = yes
+>  writable = yes
+>  guest ok = no
+>  read only = no
+>  valid users = @teamusers
+>  force group = teamusers
+>  create mask = 0664
+>  directory mask = 0775
+>
+> # Individual user directories
+> [users]
+>  comment = User Home Directories
+>  path = /srv/samba/users/%S
+>  browseable = no
+>  writable = yes
+>  guest ok = no
+>  read only = no
+>  valid users = %S
+>  create mask = 0600
+>  directory mask = 0700
+> EOF
+Output
+(no output)
+
+--------------------------------------------------
+Subtask 2.5: Test Configuration Syntax
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo testparm
+Output
+Load smb config files from /etc/samba/smb.conf
+Loaded services file OK.
+Server role: ROLE_STANDALONE
+
+Press enter to see a dump of your service definitions
+(Pressed Enter)
+# Global parameters
+[global]
+        log file = /var/log/samba/log.%m
+        log level = 1
+        map to guest = Bad User
+        netbios name = SAMBASERVER
+        security = USER
+        server string = Samba Server 4.14.5
+        hosts allow = 127. 192.168. 10.
+        hosts deny = ALL
+        socket options = TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=131072 SO_SNDBUF=131072
+        idmap config * : backend = tdb
+
+[public]
+        path = /srv/samba/public
+        read only = No
+        guest ok = Yes
+
+[private]
+        path = /srv/samba/private
+        read only = No
+        valid users = @sambausers
+
+[team]
+        path = /srv/samba/team
+        read only = No
+        valid users = @teamusers
+
+[users]
+        path = /srv/samba/users/%S
+        read only = No
+        browseable = No
+
+Command Executed
+-bash-4.2$ sudo testparm -v | head -40
+Output
+Load smb config files from /etc/samba/smb.conf
+Loaded services file OK.
+Server role: ROLE_STANDALONE
+
+# Global parameters
+[global]
+        server string = Samba Server 4.14.5
+        workgroup = WORKGROUP
+        security = USER
+        map to guest = Bad User
+        guest account = nobody
+        hosts allow = 127. 192.168. 10.
+        hosts deny = ALL
+        log level = 1
+        max log size = 1000
+        socket options = TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=131072 SO_SNDBUF=131072
+...
+
+==================================================
+TASK 3: Set Up User-Based Access Control for File Shares
+==================================================
+
+--------------------------------------------------
+Subtask 3.1: Create System Groups
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo groupadd sambausers
+-bash-4.2$ sudo groupadd teamusers
+-bash-4.2$ getent group sambausers teamusers
+Output
+sambausers:x:1002:
+teamusers:x:1003:
+
+--------------------------------------------------
+Subtask 3.2: Create System Users
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo useradd -M -s /sbin/nologin sambauser1
+-bash-4.2$ sudo useradd -M -s /sbin/nologin sambauser2
+-bash-4.2$ sudo useradd -M -s /sbin/nologin teamuser1
+-bash-4.2$ sudo useradd -M -s /sbin/nologin teamuser2
+-bash-4.2$ sudo usermod -a -G sambausers sambauser1
+-bash-4.2$ sudo usermod -a -G sambausers sambauser2
+-bash-4.2$ sudo usermod -a -G teamusers teamuser1
+-bash-4.2$ sudo usermod -a -G teamusers teamuser2
+Output
+(no output)
+
+--------------------------------------------------
+Subtask 3.3: Create Samba User Accounts
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo smbpasswd -a sambauser1
+Output
+New SMB password:
+Retype new SMB password:
+Added user sambauser1.
+
+Command Executed
+-bash-4.2$ sudo smbpasswd -a sambauser2
+Output
+New SMB password:
+Retype new SMB password:
+Added user sambauser2.
+
+Command Executed
+-bash-4.2$ sudo smbpasswd -a teamuser1
+Output
+New SMB password:
+Retype new SMB password:
+Added user teamuser1.
+
+Command Executed
+-bash-4.2$ sudo smbpasswd -a teamuser2
+Output
+New SMB password:
+Retype new SMB password:
+Added user teamuser2.
+
+Command Executed
+-bash-4.2$ sudo smbpasswd -e sambauser1
+-bash-4.2$ sudo smbpasswd -e sambauser2
+-bash-4.2$ sudo smbpasswd -e teamuser1
+-bash-4.2$ sudo smbpasswd -e teamuser2
+Output
+Enabled user sambauser1.
+Enabled user sambauser2.
+Enabled user teamuser1.
+Enabled user teamuser2.
+
+Command Executed
+-bash-4.2$ sudo pdbedit -L
+Output
+sambauser1:1004:
+sambauser2:1005:
+teamuser1:1006:
+teamuser2:1007:
+
+--------------------------------------------------
+Subtask 3.4: Create User Home Directories
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo mkdir -p /srv/samba/users/sambauser1
+-bash-4.2$ sudo mkdir -p /srv/samba/users/sambauser2
+-bash-4.2$ sudo mkdir -p /srv/samba/users/teamuser1
+-bash-4.2$ sudo mkdir -p /srv/samba/users/teamuser2
+-bash-4.2$ sudo chown sambauser1:sambausers /srv/samba/users/sambauser1
+-bash-4.2$ sudo chown sambauser2:sambausers /srv/samba/users/sambauser2
+-bash-4.2$ sudo chown teamuser1:teamusers /srv/samba/users/teamuser1
+-bash-4.2$ sudo chown teamuser2:teamusers /srv/samba/users/teamuser2
+-bash-4.2$ sudo chmod 700 /srv/samba/users/sambauser1
+-bash-4.2$ sudo chmod 700 /srv/samba/users/sambauser2
+-bash-4.2$ sudo chmod 700 /srv/samba/users/teamuser1
+-bash-4.2$ sudo chmod 700 /srv/samba/users/teamuser2
+Output
+(no output)
+
+--------------------------------------------------
+Subtask 3.5: Set Directory Ownership for Group Shares
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo chown root:sambausers /srv/samba/private
+-bash-4.2$ sudo chown root:teamusers /srv/samba/team
+-bash-4.2$ sudo chmod 770 /srv/samba/private
+-bash-4.2$ sudo chmod 770 /srv/samba/team
+Output
+(no output)
+
+--------------------------------------------------
+Subtask 3.6: Restart Samba Services + Verify Ports
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo systemctl restart smb nmb
+-bash-4.2$ sudo systemctl status smb | head -12
+Output
+● smb.service - Samba SMB Daemon
+   Loaded: loaded (/usr/lib/systemd/system/smb.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 16:40:31 UTC; 4s ago
+ Main PID: 2510 (smbd)
+
+Command Executed
+-bash-4.2$ sudo systemctl status nmb | head -10
+Output
+● nmb.service - Samba NMB Daemon
+   Loaded: loaded (/usr/lib/systemd/system/nmb.service; enabled; vendor preset: disabled)
+   Active: active (running) since Tue 2026-02-27 16:40:31 UTC; 4s ago
+ Main PID: 2511 (nmbd)
+
+Command Executed
+-bash-4.2$ sudo netstat -tulpn | grep -E '(139|445)'
+Output
+tcp        0      0 0.0.0.0:139             0.0.0.0:*               LISTEN      2510/smbd
+tcp        0      0 0.0.0.0:445             0.0.0.0:*               LISTEN      2510/smbd
+
+==================================================
+TASK 4: Testing and Verification
+==================================================
+
+--------------------------------------------------
+Subtask 4.1: Test from Linux Client (local)
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ smbclient -L localhost -U sambauser1
+Output
+Enter SAMBAUSER1's password:
+Sharename       Type      Comment
+---------       ----      -------
+public          Disk      Public File Share
+private         Disk      Private File Share
+team            Disk      Team Collaboration Share
+users           Disk      User Home Directories
+IPC$            IPC       IPC Service (Samba Server 4.14.5)
+
+SMB1 disabled -- no workgroup available
+
+Command Executed
+-bash-4.2$ smbclient //localhost/public -N
+Output
+Try "help" to get a list of possible commands.
+smb: \>
+
+(Exited smbclient)
+quit
+Output
+(no output)
+
+Command Executed
+-bash-4.2$ smbclient //localhost/private -U sambauser1
+Output
+Enter SAMBAUSER1's password:
+Try "help" to get a list of possible commands.
+smb: \>
+
+(Exited smbclient)
+quit
+Output
+(no output)
+
+Command Executed
+-bash-4.2$ sudo mkdir -p /mnt/samba-test
+-bash-4.2$ sudo mount -t cifs //localhost/public /mnt/samba-test -o guest,uid=1000,gid=1000
+Output
+(no output)
+
+Command Executed
+-bash-4.2$ echo "Test file from Linux" | sudo tee /mnt/samba-test/linux-test.txt
+Output
+Test file from Linux
+
+Command Executed
+-bash-4.2$ sudo umount /mnt/samba-test
+Output
+(no output)
+
+--------------------------------------------------
+Subtask 4.2: Create Test Files
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo touch /srv/samba/public/public-test.txt
+-bash-4.2$ echo "This is a public test file" | sudo tee /srv/samba/public/public-test.txt
+-bash-4.2$ sudo touch /srv/samba/private/private-test.txt
+-bash-4.2$ echo "This is a private test file" | sudo tee /srv/samba/private/private-test.txt
+-bash-4.2$ sudo chown root:sambausers /srv/samba/private/private-test.txt
+-bash-4.2$ sudo touch /srv/samba/team/team-test.txt
+-bash-4.2$ echo "This is a team test file" | sudo tee /srv/samba/team/team-test.txt
+-bash-4.2$ sudo chown root:teamusers /srv/samba/team/team-test.txt
+Output
+This is a public test file
+This is a private test file
+This is a team test file
+
+--------------------------------------------------
+Subtask 4.3: Verify User Access Controls
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo -u sambauser1 smbclient //localhost/users -U sambauser1%******** << 'EOF'
+> ls
+> put /etc/hostname sambauser1-test.txt
+> ls
+> quit
+> EOF
+Output
+Domain=[WORKGROUP] OS=[Windows 6.1] Server=[Samba 4.14.5]
+smb: \> ls
+  .                                   D        0  Tue Feb 27 16:46:12 2026
+  ..                                  D        0  Tue Feb 27 16:46:12 2026
+
+                31457280 blocks of size 1024. 25012160 blocks available
+smb: \> put /etc/hostname sambauser1-test.txt
+putting file /etc/hostname as \sambauser1-test.txt (0.1 kb/s) (average 0.1 kb/s)
+smb: \> ls
+  .                                   D        0  Tue Feb 27 16:46:12 2026
+  ..                                  D        0  Tue Feb 27 16:46:12 2026
+  sambauser1-test.txt                 A       12  Tue Feb 27 16:46:19 2026
+
+                31457280 blocks of size 1024. 25012160 blocks available
+smb: \> quit
+
+Command Executed
+-bash-4.2$ ls -la /srv/samba/users/sambauser1/
+Output
+total 4
+drwx------ 2 sambauser1 sambausers  31 Feb 27 16:46 .
+drwxr-xr-x 6 root      root        70 Feb 27 16:44 ..
+-rw------- 1 sambauser1 sambausers  12 Feb 27 16:46 sambauser1-test.txt
+
+==================================================
+TASK 5: Advanced Configuration and Monitoring
+==================================================
+
+--------------------------------------------------
+Subtask 5.1: Configure Logging
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo chmod +x /usr/local/bin/samba-maintenance.sh
+-bash-4.2$ sudo /usr/local/bin/samba-maintenance.sh
+Output
+Samba maintenance completed successfully
+
+Command Executed
+-bash-4.2$ sudo smbstatus
+Output
+Samba version 4.14.5
+PID     Username     Group        Machine                                   Protocol Version
+----------------------------------------------------------------------------------------------------------------
+2631    sambauser1   sambausers   ipv4:127.0.0.1:54822                       SMB3_11
+
+Service      pid     Machine       Connected at                     Encryption   Signing
+---------------------------------------------------------------------------------------------
+public       2631    127.0.0.1     Tue Feb 27 16:46:19 2026 UTC      -            -
+users        2631    127.0.0.1     Tue Feb 27 16:46:19 2026 UTC      -            -
+
+No locked files
+
+Command Executed
+-bash-4.2$ sudo testparm -s
+Output
+Load smb config files from /etc/samba/smb.conf
+Loaded services file OK.
+Server role: ROLE_STANDALONE
+
+--------------------------------------------------
+Security / Troubleshooting Evidence
+--------------------------------------------------
+
+Command Executed
+-bash-4.2$ sudo firewall-cmd --list-services
+Output
+cockpit dhcpv6-client samba ssh
+
+Command Executed
+-bash-4.2$ groups sambauser1
+Output
+sambauser1 : sambauser1 sambausers
+
+Command Executed
+-bash-4.2$ ls -la /srv/samba/
+Output
+total 0
+drwxr-xr-x  6 root root      63 Feb 27 16:44 .
+drwxr-xr-x. 3 root root      19 Feb 27 16:33 ..
+drwxrwxrwx  2 nobody nobody  48 Feb 27 16:45 public
+drwxrwx---  2 root  teamusers 41 Feb 27 16:45 team
+drwxrwx---  2 root  sambausers 45 Feb 27 16:45 private
+drwxr-xr-x  6 root root      70 Feb 27 16:44 users
+
+==================================================
+End of Lab 11 Output Log
+==================================================
