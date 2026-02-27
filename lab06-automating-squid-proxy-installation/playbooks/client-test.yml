@@ -1,0 +1,52 @@
+---
+- name: Client-Side Proxy Testing
+  hosts: localhost
+  connection: local
+  vars:
+    proxy_server: "{{ hostvars[groups['proxy_servers'][0]]['ansible_host'] }}"
+    proxy_port: 3128
+
+  tasks:
+    - name: Test direct connection (without proxy)
+      uri:
+        url: http://httpbin.org/ip
+        method: GET
+        timeout: 10
+      register: direct_connection
+      tags: direct_test
+
+    - name: Display direct connection IP
+      debug:
+        msg: "Direct connection IP: {{ (direct_connection.json.origin | default('Unknown')) }}"
+      tags: direct_test
+
+    - name: Test connection through proxy
+      uri:
+        url: http://httpbin.org/ip
+        method: GET
+        timeout: 10
+      environment:
+        http_proxy: "http://{{ proxy_server }}:{{ proxy_port }}"
+      register: proxy_connection
+      ignore_errors: yes
+      tags: proxy_test
+
+    - name: Display proxy connection results
+      debug:
+        msg: "Proxy connection IP: {{ (proxy_connection.json.origin | default('Connection Failed')) }}"
+      when: proxy_connection is succeeded
+      tags: proxy_test
+
+    - name: Test proxy with curl command
+      command: >
+        curl -x {{ proxy_server }}:{{ proxy_port }}
+        -s http://httpbin.org/headers
+      register: curl_test
+      ignore_errors: yes
+      tags: curl_test
+
+    - name: Display curl test results
+      debug:
+        var: curl_test.stdout
+      when: curl_test.rc == 0
+      tags: curl_test
