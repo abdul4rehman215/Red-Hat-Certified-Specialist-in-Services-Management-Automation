@@ -1,0 +1,26 @@
+[Unit]
+Description=Custom Log Monitor Service
+Documentation=man:systemd.service(5)
+After=multi-user.target
+Requires=multi-user.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/home/centos/systemd-lab/scripts/log-monitor.sh
+ExecStop=/bin/kill -TERM $MAINPID
+PIDFile=/tmp/log-monitor.pid
+Restart=always
+RestartSec=10
+TimeoutStartSec=30
+TimeoutStopSec=30
+# Environment variables
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=log-monitor
+
+[Install]
+WantedBy=multi-user.target
