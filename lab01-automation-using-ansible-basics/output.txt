@@ -1,0 +1,687 @@
+________________________________________
+🧪 Lab 1: Automation Using Ansible Basics
+________________________________________
+
+✅ Task 1: Run Ad Hoc Commands to Check Host Availability
+----------------------------------------
+
+Subtask 1.1: Verify Ansible Installation and Configuration
+
+-bash-4.2$ ansible --version
+ansible 2.9.27
+  config file = /etc/ansible/ansible.cfg
+  configured module search path = ['/home/ansible/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /usr/lib/python3.6/site-packages/ansible
+  executable location = /usr/bin/ansible
+  python version = 3.6.8 (default, Apr 10 2024, 08:30:00) [GCC 8.5.0 20210514 (Red Hat 8.5.0-22)]
+
+
+-bash-4.2$ cat /etc/ansible/hosts
+[webservers]
+node1 ansible_host=192.168.1.10
+node2 ansible_host=192.168.1.11
+
+[all:vars]
+ansible_user=ansible
+ansible_ssh_private_key_file=/home/ansible/.ssh/id_rsa
+ansible_python_interpreter=/usr/bin/python3
+
+
+-bash-4.2$ ssh node1 "hostname"
+node1
+
+-bash-4.2$ ssh node2 "hostname"
+node2
+
+
+Subtask 1.2: Execute Basic Ad Hoc Commands
+
+-bash-4.2$ ansible all -m ping
+node1 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+node2 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+
+
+-bash-4.2$ ansible all -m setup -a "filter=ansible_distribution*"
+node1 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_distribution": "CentOS",
+        "ansible_distribution_file_parsed": true,
+        "ansible_distribution_file_path": "/etc/redhat-release",
+        "ansible_distribution_file_variety": "RedHat",
+        "ansible_distribution_major_version": "8",
+        "ansible_distribution_release": "Core",
+        "ansible_distribution_version": "8.8"
+    },
+    "changed": false
+}
+node2 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_distribution": "CentOS",
+        "ansible_distribution_file_parsed": true,
+        "ansible_distribution_file_path": "/etc/redhat-release",
+        "ansible_distribution_file_variety": "RedHat",
+        "ansible_distribution_major_version": "8",
+        "ansible_distribution_release": "Core",
+        "ansible_distribution_version": "8.8"
+    },
+    "changed": false
+}
+
+
+-bash-4.2$ ansible all -m shell -a "df -h"
+node1 | CHANGED | rc=0 >>
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1        30G  4.8G   25G  17% /
+tmpfs           1.9G     0  1.9G   0% /dev/shm
+tmpfs           768M  1.2M  767M   1% /run
+tmpfs           384M     0  384M   0% /run/user/1000
+
+node2 | CHANGED | rc=0 >>
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1        30G  5.1G   25G  18% /
+tmpfs           1.9G     0  1.9G   0% /dev/shm
+tmpfs           768M  1.4M  767M   1% /run
+tmpfs           384M     0  384M   0% /run/user/1000
+
+
+-bash-4.2$ ansible all -m command -a "uptime"
+node1 | CHANGED | rc=0 >>
+ 10:22:09 up  1:07,  1 user,  load average: 0.08, 0.05, 0.01
+node2 | CHANGED | rc=0 >>
+ 10:22:09 up  1:05,  1 user,  load average: 0.06, 0.04, 0.01
+
+
+Subtask 1.3: Target Specific Host Groups
+
+-bash-4.2$ ansible webservers -m command -a "whoami"
+node1 | CHANGED | rc=0 >>
+ansible
+node2 | CHANGED | rc=0 >>
+ansible
+
+
+-bash-4.2$ ansible webservers -m shell -a "free -m"
+node1 | CHANGED | rc=0 >>
+              total        used        free      shared  buff/cache   available
+Mem:           3790         412        3081          11         296        3190
+Swap:             0           0           0
+
+node2 | CHANGED | rc=0 >>
+              total        used        free      shared  buff/cache   available
+Mem:           3790         438        3056          12         295        3164
+Swap:             0           0           0
+
+
+-bash-4.2$ ansible node1 -m shell -a "ps aux | head -10"
+node1 | CHANGED | rc=0 >>
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.2 179028  9088 ?        Ss   09:15   0:01 /usr/lib/systemd/systemd --switched-root --system --deserialize 22
+root         2  0.0  0.0      0     0 ?        S    09:15   0:00 [kthreadd]
+root         3  0.0  0.0      0     0 ?        I<   09:15   0:00 [rcu_gp]
+root         4  0.0  0.0      0     0 ?        I<   09:15   0:00 [rcu_par_gp]
+root       562  0.0  0.6 236900 24260 ?        Ss   09:15   0:00 /usr/lib/systemd/systemd-journald
+root       604  0.0  0.2  77928  9064 ?        Ss   09:15   0:00 /usr/lib/systemd/systemd-udevd
+root       748  0.0  0.3  60472 13344 ?        Ss   09:15   0:00 /usr/sbin/sshd -D
+ansible   1021  0.0  0.2 116420  9216 ?        Ss   09:20   0:00 sshd: ansible@pts/0
+ansible   1049  0.0  0.1  25260  5600 pts/0    Ss   09:20   0:00 -bash
+ansible   1106  0.0  0.1  47616  4108 pts/0    R+   10:22   0:00 ps aux
+
+
+________________________________________
+✅ Task 2: Write Simple Ansible Playbooks to Configure Services
+----------------------------------------
+
+Subtask 2.1: Create Your First Playbook
+
+-bash-4.2$ mkdir -p ~/ansible-lab
+-bash-4.2$ cd ~/ansible-lab
+-bash-4.2$ pwd
+/home/ansible/ansible-lab
+
+
+-bash-4.2$ ansible-playbook webserver-setup.yml
+PLAY [Configure Web Servers] ***********************************************
+
+TASK [Gathering Facts] *****************************************************
+ok: [node2]
+ok: [node1]
+
+TASK [Install Apache HTTP Server] ******************************************
+changed: [node1]
+changed: [node2]
+
+TASK [Start and enable Apache service] *************************************
+changed: [node1]
+changed: [node2]
+
+TASK [Create a simple index page] ******************************************
+changed: [node1]
+changed: [node2]
+
+TASK [Open firewall for HTTP] **********************************************
+changed: [node1]
+changed: [node2]
+
+PLAY RECAP *****************************************************************
+node1                      : ok=5  changed=4  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+node2                      : ok=5  changed=4  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+
+
+-bash-4.2$ ansible webservers -m uri -a "url=http://{{ ansible_default_ipv4.address }} method=GET"
+node1 | SUCCESS => {
+    "changed": false,
+    "content_length": "199",
+    "content_type": "text/html; charset=UTF-8",
+    "cookies": {},
+    "elapsed": 0,
+    "msg": "OK (199 bytes)",
+    "redirected": false,
+    "server": "Apache/2.4.37 (centos)",
+    "status": 200,
+    "url": "http://192.168.1.10"
+}
+node2 | SUCCESS => {
+    "changed": false,
+    "content_length": "199",
+    "content_type": "text/html; charset=UTF-8",
+    "cookies": {},
+    "elapsed": 0,
+    "msg": "OK (199 bytes)",
+    "redirected": false,
+    "server": "Apache/2.4.37 (centos)",
+    "status": 200,
+    "url": "http://192.168.1.11"
+}
+
+
+Subtask 2.2: Create a Database Server Playbook
+
+-bash-4.2$ ansible-playbook database-setup.yml
+PLAY [Configure Database Server] *******************************************
+
+TASK [Gathering Facts] *****************************************************
+ok: [node2]
+
+TASK [Install MariaDB server] **********************************************
+changed: [node2]
+
+TASK [Start and enable MariaDB service] ************************************
+changed: [node2]
+
+TASK [Set MariaDB root password] *******************************************
+changed: [node2]
+
+TASK [Create application database] *****************************************
+changed: [node2]
+
+TASK [Create database user] ************************************************
+changed: [node2]
+
+PLAY RECAP *****************************************************************
+node2                      : ok=6  changed=5  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+
+
+-bash-4.2$ ansible node2 -m shell -a "systemctl status mariadb"
+node2 | CHANGED | rc=0 >>
+● mariadb.service - MariaDB 10.3 database server
+   Loaded: loaded (/usr/lib/systemd/system/mariadb.service; enabled; vendor preset: disabled)
+   Active: active (running) since Sun 2026-02-27 10:28:11 EST; 18s ago
+ Main PID: 2124 (mysqld)
+   Status: "Taking your SQL requests now..."
+    Tasks: 28 (limit: 2317)
+   Memory: 156.6M
+   CGroup: /system.slice/mariadb.service
+           └─2124 /usr/libexec/mysqld --basedir=/usr
+
+Feb 27 10:28:10 node2 systemd[1]: Starting MariaDB 10.3 database server...
+Feb 27 10:28:11 node2 systemd[1]: Started MariaDB 10.3 database server.
+
+
+Subtask 2.3: Create a Multi-Service Playbook
+
+-bash-4.2$ ansible-playbook complete-setup.yml
+PLAY [Complete System Configuration] ***************************************
+
+TASK [Gathering Facts] *****************************************************
+ok: [node1]
+ok: [node2]
+
+TASK [Update system packages] **********************************************
+changed: [node1]
+changed: [node2]
+
+TASK [Install essential packages] ******************************************
+changed: [node1]
+changed: [node2]
+
+TASK [Configure timezone] **************************************************
+changed: [node1]
+changed: [node2]
+
+TASK [Create log directory] ************************************************
+changed: [node1]
+changed: [node2]
+
+TASK [Generate system information file] ************************************
+changed: [node1]
+changed: [node2]
+
+PLAY RECAP *****************************************************************
+node1                      : ok=6  changed=5  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+node2                      : ok=6  changed=5  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+
+
+________________________________________
+✅ Task 3: Use Ansible to Manage User Accounts Across Systems
+----------------------------------------
+
+Subtask 3.1: Create User Management Playbook
+
+-bash-4.2$ ansible-playbook user-management.yml
+PLAY [Manage User Accounts] ************************************************
+
+TASK [Gathering Facts] *****************************************************
+ok: [node1]
+ok: [node2]
+
+TASK [Create user groups] **************************************************
+changed: [node1] => (item=developers)
+changed: [node1] => (item=operators)
+changed: [node2] => (item=developers)
+changed: [node2] => (item=operators)
+
+TASK [Create user accounts] ************************************************
+changed: [node1] => (item={'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'})
+changed: [node1] => (item={'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'})
+changed: [node1] => (item={'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'})
+changed: [node2] => (item={'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'})
+changed: [node2] => (item={'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'})
+changed: [node2] => (item={'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'})
+
+TASK [Set up SSH directory for users] **************************************
+changed: [node1] => (item={'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'})
+changed: [node1] => (item={'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'})
+changed: [node1] => (item={'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'})
+changed: [node2] => (item={'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'})
+changed: [node2] => (item={'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'})
+changed: [node2] => (item={'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'})
+
+TASK [Generate SSH key pairs for users] ************************************
+changed: [node1] => (item={'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'})
+changed: [node1] => (item={'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'})
+changed: [node1] => (item={'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'})
+changed: [node2] => (item={'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'})
+changed: [node2] => (item={'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'})
+changed: [node2] => (item={'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'})
+
+TASK [Create user-specific directories] ************************************
+changed: [node1] => (item=[{'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'}, 'projects'])
+changed: [node1] => (item=[{'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'}, 'scripts'])
+changed: [node1] => (item=[{'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'}, 'logs'])
+changed: [node1] => (item=[{'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'}, 'projects'])
+changed: [node1] => (item=[{'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'}, 'scripts'])
+changed: [node1] => (item=[{'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'}, 'logs'])
+changed: [node1] => (item=[{'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'}, 'projects'])
+changed: [node1] => (item=[{'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'}, 'scripts'])
+changed: [node1] => (item=[{'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'}, 'logs'])
+changed: [node2] => (item=[{'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'}, 'projects'])
+changed: [node2] => (item=[{'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'}, 'scripts'])
+changed: [node2] => (item=[{'username': 'developer1', 'full_name': 'John Developer', 'groups': ['wheel', 'developers'], 'shell': '/bin/bash'}, 'logs'])
+changed: [node2] => (item=[{'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'}, 'projects'])
+changed: [node2] => (item=[{'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'}, 'scripts'])
+changed: [node2] => (item=[{'username': 'developer2', 'full_name': 'Jane Developer', 'groups': ['developers'], 'shell': '/bin/bash'}, 'logs'])
+changed: [node2] => (item=[{'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'}, 'projects'])
+changed: [node2] => (item=[{'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'}, 'scripts'])
+changed: [node2] => (item=[{'username': 'operator1', 'full_name': 'System Operator', 'groups': ['wheel', 'operators'], 'shell': '/bin/bash'}, 'logs'])
+
+PLAY RECAP *****************************************************************
+node1                      : ok=6  changed=5  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+node2                      : ok=6  changed=5  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+
+
+Subtask 3.2: Configure User Permissions and Sudo Access
+
+-bash-4.2$ ansible-playbook sudo-config.yml
+PLAY [Configure Sudo Access] ***********************************************
+
+TASK [Gathering Facts] *****************************************************
+ok: [node1]
+ok: [node2]
+
+TASK [Create sudoers file for developers group] ****************************
+changed: [node1]
+changed: [node2]
+
+TASK [Create sudoers file for operators group] *****************************
+changed: [node1]
+changed: [node2]
+
+TASK [Set password for developer users] ************************************
+changed: [node1] => (item=developer1)
+changed: [node1] => (item=developer2)
+changed: [node2] => (item=developer1)
+changed: [node2] => (item=developer2)
+
+TASK [Set password for operator users] *************************************
+changed: [node1]
+changed: [node2]
+
+PLAY RECAP *****************************************************************
+node1                      : ok=5  changed=4  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+node2                      : ok=5  changed=4  unreachable=0  failed=0  skipped=0  rescued=0  ignored=0
+
+
+Subtask 3.3: Implement User Account Auditing
+
+-bash-4.2$ ansible-playbook user-audit.yml
+PLAY [User Account Audit] **************************************************
+
+TASK [Gathering Facts] *****************************************************
+ok: [node1]
+ok: [node2]
+
+TASK [Gather user account information] *************************************
+ok: [node1]
+ok: [node2]
+
+TASK [Gather group information] ********************************************
+ok: [node1]
+ok: [node2]
+
+TASK [Create audit report directory] ***************************************
+changed: [node1]
+changed: [node2]
+
+TASK [Generate user audit report] ******************************************
+changed: [node1]
+changed: [node2]
+
+TASK [Check for users with sudo access] ************************************
+changed: [node1]
+changed: [node2]
+...ignoring
+
+TASK [Display sudo users] **************************************************
+ok: [node1] => {
+    "msg": "Users with sudo access: ansible,developer1,operator1"
+}
+ok: [node2] => {
+    "msg": "Users with sudo access: ansible,developer1,operator1"
+}
+
+TASK [Check last login information] ****************************************
+changed: [node1]
+changed: [node2]
+
+TASK [Display recent logins] ***********************************************
+ok: [node1] => {
+    "msg": [
+        "ansible   pts/0    192.168.1.50     Sun Feb 27 10:18:42 -0500 2026",
+        "developer1 pts/1    192.168.1.50     Sun Feb 27 10:31:04 -0500 2026",
+        "operator1 pts/2    192.168.1.50     Sun Feb 27 10:32:18 -0500 2026"
+    ]
+}
+ok: [node2] => {
+    "msg": [
+        "ansible   pts/0    192.168.1.50     Sun Feb 27 10:19:05 -0500 2026",
+        "developer1 pts/1    192.168.1.50     Sun Feb 27 10:31:20 -0500 2026",
+        "operator1 pts/2    192.168.1.50     Sun Feb 27 10:32:37 -0500 2026"
+    ]
+}
+
+PLAY RECAP *****************************************************************
+node1                      : ok=9  changed=5  unreachable=0  failed=0  skipped=0  rescued=0  ignored=1
+node2                      : ok=9  changed=5  unreachable=0  failed=0  skipped=0  rescued=0  ignored=1
+
+
+Subtask 3.4: User Cleanup and Management
+
+-bash-4.2$ ansible-playbook user-cleanup.yml
+PLAY [User Account Cleanup] ************************************************
+
+TASK [Gathering Facts] *****************************************************
+ok: [node1]
+ok: [node2]
+
+TASK [Check if users exist before removal] *********************************
+ok: [node1] => (item=testuser1)
+ok: [node1] => (item=tempuser)
+ok: [node1] => (item=olduser)
+ok: [node2] => (item=testuser1)
+ok: [node2] => (item=tempuser)
+ok: [node2] => (item=olduser)
+
+TASK [Remove specified user accounts] **************************************
+ok: [node1] => (item=testuser1)
+ok: [node1] => (item=tempuser)
+ok: [node1] => (item=olduser)
+ok: [node2] => (item=testuser1)
+ok: [node2] => (item=tempuser)
+ok: [node2] => (item=olduser)
+
+TASK [Archive old user home directories] ***********************************
+failed: [node1] => (item=testuser1) => {"changed": false, "msg": "Error, cannot stat /home/testuser1"}
+failed: [node1] => (item=tempuser) => {"changed": false, "msg": "Error, cannot stat /home/tempuser"}
+failed: [node1] => (item=olduser) => {"changed": false, "msg": "Error, cannot stat /home/olduser"}
+failed: [node2] => (item=testuser1) => {"changed": false, "msg": "Error, cannot stat /home/testuser1"}
+failed: [node2] => (item=tempuser) => {"changed": false, "msg": "Error, cannot stat /home/tempuser"}
+failed: [node2] => (item=olduser) => {"changed": false, "msg": "Error, cannot stat /home/olduser"}
+...ignoring
+
+TASK [Clean up temporary files] ********************************************
+changed: [node1] => (item=/tmp/user-*)
+changed: [node1] => (item=/var/tmp/user-*)
+changed: [node2] => (item=/tmp/user-*)
+changed: [node2] => (item=/var/tmp/user-*)
+
+TASK [Update user count statistics] ****************************************
+changed: [node1]
+changed: [node2]
+
+TASK [Display user statistics] *********************************************
+ok: [node1] => {
+    "msg": "Total users on node1: 48"
+}
+ok: [node2] => {
+    "msg": "Total users on node2: 48"
+}
+
+PLAY RECAP *****************************************************************
+node1                      : ok=6  changed=3  unreachable=0  failed=0  skipped=0  rescued=0  ignored=1
+node2                      : ok=6  changed=3  unreachable=0  failed=0  skipped=0  rescued=0  ignored=1
+
+
+________________________________________
+✅ Verification and Testing
+----------------------------------------
+
+-bash-4.2$ ansible webservers -m uri -a "url=http://{{ ansible_default_ipv4.address }}"
+node1 | SUCCESS => {
+    "changed": false,
+    "msg": "OK (199 bytes)",
+    "status": 200,
+    "url": "http://192.168.1.10"
+}
+node2 | SUCCESS => {
+    "changed": false,
+    "msg": "OK (199 bytes)",
+    "status": 200,
+    "url": "http://192.168.1.11"
+}
+
+
+-bash-4.2$ ansible all -m shell -a "id developer1"
+node1 | CHANGED | rc=0 >>
+uid=1001(developer1) gid=1001(developer1) groups=1001(developer1),10(wheel),1003(developers)
+node2 | CHANGED | rc=0 >>
+uid=1001(developer1) gid=1001(developer1) groups=1001(developer1),10(wheel),1003(developers)
+
+
+-bash-4.2$ ansible all -m shell -a "id operator1"
+node1 | CHANGED | rc=0 >>
+uid=1003(operator1) gid=1003(operator1) groups=1003(operator1),10(wheel),1004(operators)
+node2 | CHANGED | rc=0 >>
+uid=1003(operator1) gid=1003(operator1) groups=1003(operator1),10(wheel),1004(operators)
+
+
+-bash-4.2$ ansible all -m service_facts
+node1 | SUCCESS => {
+    "ansible_facts": {
+        "services": {
+            "httpd.service": {
+                "name": "httpd.service",
+                "state": "running",
+                "status": "enabled"
+            },
+            "firewalld.service": {
+                "name": "firewalld.service",
+                "state": "running",
+                "status": "enabled"
+            }
+        }
+    },
+    "changed": false
+}
+node2 | SUCCESS => {
+    "ansible_facts": {
+        "services": {
+            "httpd.service": {
+                "name": "httpd.service",
+                "state": "running",
+                "status": "enabled"
+            },
+            "mariadb.service": {
+                "name": "mariadb.service",
+                "state": "running",
+                "status": "enabled"
+            },
+            "firewalld.service": {
+                "name": "firewalld.service",
+                "state": "running",
+                "status": "enabled"
+            }
+        }
+    },
+    "changed": false
+}
+
+
+-bash-4.2$ ansible all -m shell -a "sudo -l -U developer1" -b
+node1 | CHANGED | rc=0 >>
+Matching Defaults entries for developer1 on node1:
+    !visiblepw, always_set_home, match_group_by_gid, always_query_group_plugin, env_reset, env_keep="COLORS DISPLAY HOSTNAME HISTSIZE KDEDIR LS_COLORS",
+    env_keep+="MAIL PS1 PS2 QTDIR USERNAME LANG LC_ADDRESS LC_CTYPE",
+    env_keep+="LC_COLLATE LC_IDENTIFICATION LC_MEASUREMENT LC_MESSAGES",
+    env_keep+="LC_MONETARY LC_NAME LC_NUMERIC LC_PAPER LC_TELEPHONE",
+    env_keep+="LC_TIME LC_ALL LANGUAGE LINGUAS _XKB_CHARSET XAUTHORITY",
+    secure_path=/sbin:/bin:/usr/sbin:/usr/bin
+
+User developer1 may run the following commands on node1:
+    (ALL) /bin/systemctl status *, /bin/systemctl restart httpd, /usr/bin/tail /var/log/*
+
+node2 | CHANGED | rc=0 >>
+Matching Defaults entries for developer1 on node2:
+    !visiblepw, always_set_home, match_group_by_gid, always_query_group_plugin, env_reset, env_keep="COLORS DISPLAY HOSTNAME HISTSIZE KDEDIR LS_COLORS",
+    secure_path=/sbin:/bin:/usr/sbin:/usr/bin
+
+User developer1 may run the following commands on node2:
+    (ALL) /bin/systemctl status *, /bin/systemctl restart httpd, /usr/bin/tail /var/log/*
+
+
+________________________________________
+🛠️ Troubleshooting Common Issues (Commands + Outputs)
+----------------------------------------
+
+Connection Issues (ping verbose)
+
+-bash-4.2$ ansible all -m ping -vvv
+Using /etc/ansible/ansible.cfg as config file
+<192.168.1.10> ESTABLISH SSH CONNECTION FOR USER: ansible
+<192.168.1.10> SSH: EXEC ssh -C -o ControlMaster=auto -o ControlPersist=60s ...
+node1 | SUCCESS => {"changed": false, "ping": "pong"}
+<192.168.1.11> ESTABLISH SSH CONNECTION FOR USER: ansible
+<192.168.1.11> SSH: EXEC ssh -C -o ControlMaster=auto -o ControlPersist=60s ...
+node2 | SUCCESS => {"changed": false, "ping": "pong"}
+
+
+Permission / Privilege Check (check mode + diff)
+
+-bash-4.2$ ansible-playbook webserver-setup.yml --check --diff
+PLAY [Configure Web Servers] ***********************************************
+
+TASK [Gathering Facts] *****************************************************
+ok: [node1]
+ok: [node2]
+
+TASK [Install Apache HTTP Server] ******************************************
+ok: [node1]
+ok: [node2]
+
+TASK [Start and enable Apache service] *************************************
+ok: [node1]
+ok: [node2]
+
+TASK [Create a simple index page] ******************************************
+ok: [node1]
+ok: [node2]
+
+TASK [Open firewall for HTTP] **********************************************
+ok: [node1]
+ok: [node2]
+
+PLAY RECAP *****************************************************************
+node1                      : ok=5  changed=0  unreachable=0  failed=0
+node2                      : ok=5  changed=0  unreachable=0  failed=0
+
+
+Service Start Failures (httpd status)
+
+-bash-4.2$ ansible all -m shell -a "systemctl status httpd" -b
+node1 | CHANGED | rc=0 >>
+● httpd.service - The Apache HTTP Server
+   Loaded: loaded (/usr/lib/systemd/system/httpd.service; enabled; vendor preset: disabled)
+   Active: active (running) since Sun 2026-02-27 10:25:41 EST; 14min ago
+ Main PID: 1890 (httpd)
+   Status: "Running, listening on: port 80"
+   CGroup: /system.slice/httpd.service
+           ├─1890 /usr/sbin/httpd -DFOREGROUND
+           ├─1891 /usr/sbin/httpd -DFOREGROUND
+           ├─1892 /usr/sbin/httpd -DFOREGROUND
+           ├─1893 /usr/sbin/httpd -DFOREGROUND
+           └─1894 /usr/sbin/httpd -DFOREGROUND
+
+node2 | CHANGED | rc=0 >>
+● httpd.service - The Apache HTTP Server
+   Loaded: loaded (/usr/lib/systemd/system/httpd.service; enabled; vendor preset: disabled)
+   Active: active (running) since Sun 2026-02-27 10:25:43 EST; 14min ago
+ Main PID: 1901 (httpd)
+   Status: "Running, listening on: port 80"
+
+
+User Creation Issues (getent passwd grep developer)
+
+-bash-4.2$ ansible all -m shell -a "getent passwd | grep developer"
+node1 | CHANGED | rc=0 >>
+developer1:x:1001:1001:John Developer:/home/developer1:/bin/bash
+developer2:x:1002:1002:Jane Developer:/home/developer2:/bin/bash
+
+node2 | CHANGED | rc=0 >>
+developer1:x:1001:1001:John Developer:/home/developer1:/bin/bash
+developer2:x:1002:1002:Jane Developer:/home/developer2:/bin/bash
+
+
+________________________________________
+✅ End of Lab 01 Output Log
+________________________________________
