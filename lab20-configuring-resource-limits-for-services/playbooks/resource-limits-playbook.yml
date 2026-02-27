@@ -1,0 +1,100 @@
+---
+- name: Configure Resource Limits for Services
+  hosts: all
+  become: yes
+
+  vars:
+    services_config:
+      - name: "nginx-limited"
+        description: "Nginx Web Server with Resource Limits"
+        exec_start: "/usr/sbin/nginx -g 'daemon off;'"
+        cpu_quota: "60%"
+        memory_max: "256M"
+        tasks_max: 50
+        io_weight: 200
+        user: "nginx"
+        group: "nginx"
+
+      - name: "database-sim"
+        description: "Database Simulation Service"
+        exec_start: "/opt/testservice/database-sim.sh"
+        cpu_quota: "80%"
+        memory_max: "512M"
+        tasks_max: 100
+        io_weight: 500
+        user: "nobody"
+        group: "nobody"
+
+  tasks:
+    - name: Create service directories
+      file:
+        path: /opt/testservice
+        state: directory
+        mode: '0755'
+
+    - name: Create database simulation script
+      copy:
+        content: |
+          #!/bin/bash
+          echo "Starting database simulation..."
+          while true; do
+            echo "$(date): Database query processed" >> /tmp/database.log
+
+            # Simulate database work
+            for i in {1..100}; do
+              echo "SELECT * FROM table_$i" > /dev/null
+            done
+
+            sleep 3
+
+            # Log rotation
+            if [ $(wc -l < /tmp/database.log) -gt 500 ]; then
+              tail -250 /tmp/database.log > /tmp/database.log.tmp
+              mv /tmp/database.log.tmp /tmp/database.log
+            fi
+          done
+        dest: /opt/testservice/database-sim.sh
+        mode: '0755'
+
+    - name: Create systemd service files with resource limits
+      template:
+        src: service-template.j2
+        dest: "/etc/systemd/system/{{ item.name }}.service"
+      loop: "{{ services_config }}"
+      notify:
+        - reload systemd
+        - restart services
+
+    - name: Create service monitoring script
+      copy:
+        content: |
+          #!/bin/bash
+          # Service Resource Monitor Script
+          echo "=== Service Resource Usage Report ==="
+          echo "Generated on: $(date)"
+          echo ""
+
+          for service in nginx-limited database-sim resource-test webserver-sim; do
+            if systemctl is-active --quiet $service; then
+              echo "Service: $service (ACTIVE)"
+              systemctl show $service --property=CPUUsageNSec,MemoryCurrent,TasksCurrent 2>/dev/null | sed 's/^/ /'
+              echo ""
+            else
+              echo "Service: $service (INACTIVE)"
+              echo ""
+            fi
+          done
+        dest: /usr/local/bin/service-resource-monitor.sh
+        mode: '0755'
+
+  handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: restart services
+      systemd:
+        name: "{{ item.name }}"
+        state: restarted
+        enabled: yes
+      loop: "{{ services_config }}"
