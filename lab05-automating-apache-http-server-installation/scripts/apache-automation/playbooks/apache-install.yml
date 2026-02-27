@@ -1,0 +1,72 @@
+---
+- name: Install and Configure Apache HTTP Server
+  hosts: webservers
+  become: yes
+  vars:
+    apache_service_name: httpd
+    apache_config_dir: /etc/httpd
+    apache_document_root: /var/www/html
+    apache_log_dir: /var/log/httpd
+
+  tasks:
+    - name: Update system packages
+      yum:
+        name: '*'
+        state: latest
+        update_cache: yes
+      tags: system_update
+
+    - name: Install Apache HTTP Server
+      yum:
+        name:
+          - httpd
+          - httpd-tools
+          - mod_ssl
+        state: present
+      tags: apache_install
+
+    - name: Install additional packages for SSL
+      yum:
+        name:
+          - openssl
+          - python3-cryptography
+        state: present
+      tags: ssl_packages
+
+    - name: Start and enable Apache service
+      systemd:
+        name: "{{ apache_service_name }}"
+        state: started
+        enabled: yes
+      tags: apache_service
+
+    - name: Configure firewall for HTTP and HTTPS
+      firewalld:
+        service: "{{ item }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop:
+        - http
+        - https
+      tags: firewall
+
+    - name: Create basic index.html
+      copy:
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>Apache Server - {{ inventory_hostname }}</title>
+          </head>
+          <body>
+          <h1>Welcome to {{ inventory_hostname }}</h1>
+          <p>Apache HTTP Server is running successfully!</p>
+          <p>Server Time: {{ ansible_date_time.iso8601 }}</p>
+          </body>
+          </html>
+        dest: "{{ apache_document_root }}/index.html"
+        owner: apache
+        group: apache
+        mode: '0644'
+      tags: default_page
