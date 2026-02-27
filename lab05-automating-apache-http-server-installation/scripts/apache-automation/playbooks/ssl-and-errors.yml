@@ -1,0 +1,111 @@
+---
+- name: Configure SSL Security and Custom Error Pages
+  hosts: webservers
+  become: yes
+  vars:
+    apache_service_name: httpd
+    apache_config_dir: /etc/httpd
+    apache_document_root: /var/www/html
+    error_pages_dir: /var/www/error-pages
+
+  tasks:
+    - name: Install mod_headers for security headers
+      yum:
+        name:
+          - mod_headers
+        state: present
+      tags: headers_module
+
+    - name: Create error pages directory
+      file:
+        path: "{{ error_pages_dir }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+      tags: error_dirs
+
+    - name: Deploy custom error pages
+      template:
+        src: "../templates/error-pages/{{ item }}.html.j2"
+        dest: "{{ error_pages_dir }}/{{ item }}.html"
+        owner: apache
+        group: apache
+        mode: '0644'
+      loop:
+        - '404'
+        - '500'
+      tags: error_pages
+
+    - name: Configure SSL security settings
+      template:
+        src: ../templates/ssl-security.conf.j2
+        dest: "{{ apache_config_dir }}/conf.d/ssl-security.conf"
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+      notify: restart apache
+      tags: ssl_security
+
+    - name: Configure global error pages
+      blockinfile:
+        path: "{{ apache_config_dir }}/conf/httpd.conf"
+        block: |
+          # Custom Error Pages
+          ErrorDocument 404 /error-pages/404.html
+          ErrorDocument 500 /error-pages/500.html
+
+          # Alias for error pages
+          Alias /error-pages "{{ error_pages_dir }}"
+
+          <Directory "{{ error_pages_dir }}">
+          AllowOverride None
+          Require all granted
+          </Directory>
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - Error Pages"
+        backup: yes
+      notify: restart apache
+      tags: error_config
+
+    - name: Enable required Apache modules
+      apache2_module:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - rewrite
+        - headers
+        - ssl
+      notify: restart apache
+      tags: apache_modules
+      ignore_errors: yes
+
+    - name: Alternative method - Enable modules via configuration
+      lineinfile:
+        path: "{{ apache_config_dir }}/conf/httpd.conf"
+        line: "LoadModule {{ item.module }} modules/{{ item.file }}"
+        state: present
+        backup: yes
+      loop:
+        - { module: "rewrite_module", file: "mod_rewrite.so" }
+        - { module: "headers_module", file: "mod_headers.so" }
+        - { module: "ssl_module", file: "mod_ssl.so" }
+      notify: restart apache
+      tags: enable_modules
+
+    - name: Test Apache configuration
+      command: httpd -t
+      register: apache_config_test
+      changed_when: false
+      tags: config_test
+
+    - name: Display configuration test results
+      debug:
+        var: apache_config_test.stdout_lines
+      tags: config_test
+
+  handlers:
+    - name: restart apache
+      systemd:
+        name: "{{ apache_service_name }}"
+        state: restarted
