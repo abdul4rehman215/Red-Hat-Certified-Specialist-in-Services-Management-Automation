@@ -1,0 +1,77 @@
+---
+- name: Advanced Resource Management for Services
+  hosts: all
+  become: yes
+
+  vars:
+    resource_profiles:
+      low:
+        cpu_quota: "25%"
+        memory_max: "128M"
+        tasks_max: 20
+        io_weight: 100
+      medium:
+        cpu_quota: "50%"
+        memory_max: "256M"
+        tasks_max: 50
+        io_weight: 200
+      high:
+        cpu_quota: "75%"
+        memory_max: "512M"
+        tasks_max: 100
+        io_weight: 400
+
+  tasks:
+    - name: Gather system information
+      setup:
+        gather_subset:
+          - hardware
+          - memory
+
+    - name: Display system resources
+      debug:
+        msg: |
+          System has {{ ansible_processor_vcpus }} CPU cores
+          Total memory: {{ ansible_memtotal_mb }}MB
+          Available memory: {{ ansible_memfree_mb }}MB
+
+    - name: Create resource limit override directory
+      file:
+        path: "/etc/systemd/system/{{ item }}.service.d"
+        state: directory
+        mode: '0755'
+      loop:
+        - resource-test
+        - webserver-sim
+
+    - name: Apply resource profile based on system capacity
+      template:
+        src: resource-override.j2
+        dest: "/etc/systemd/system/{{ item }}.service.d/resource-limits.conf"
+      vars:
+        profile: "{{ 'high' if ansible_memtotal_mb > 2048 else ('medium' if ansible_memtotal_mb > 1024 else 'low') }}"
+      loop:
+        - resource-test
+        - webserver-sim
+      notify:
+        - reload systemd
+        - restart resource services
+
+    - name: Create resource monitoring cron job
+      cron:
+        name: "Service Resource Monitoring"
+        minute: "*/5"
+        job: "/usr/local/bin/service-resource-monitor.sh >> /var/log/service-resources.log"
+
+  handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: restart resource services
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - resource-test
+        - webserver-sim
