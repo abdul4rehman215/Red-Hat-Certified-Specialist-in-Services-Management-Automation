@@ -1,0 +1,35 @@
+---
+- name: Validate Inventory Configuration
+  hosts: all
+  gather_facts: yes
+
+  tasks:
+    - name: Display host information
+      debug:
+        msg: |
+          Host: {{ inventory_hostname }}
+          IP: {{ ansible_host | default('N/A') }}
+          Group: {{ group_names }}
+          OS: {{ ansible_os_family | default('Unknown') }}
+
+    - name: Check SSH connectivity
+      ping:
+      register: ping_result
+
+    - name: Verify required variables are set
+      assert:
+        that:
+          - ansible_host is defined
+          - inventory_hostname is defined
+        fail_msg: "Required variables missing for {{ inventory_hostname }}"
+        success_msg: "All required variables present for {{ inventory_hostname }}"
+
+    - name: Test sudo access (if applicable)
+      command: whoami
+      become: yes
+      register: sudo_test
+      ignore_errors: yes
+
+    - name: Report sudo status
+      debug:
+        msg: "Sudo access: {{ 'Available' if sudo_test.rc == 0 else 'Not available' }}"
