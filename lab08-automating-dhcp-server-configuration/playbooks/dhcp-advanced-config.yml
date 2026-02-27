@@ -1,0 +1,61 @@
+---
+- name: Advanced DHCP Configuration with Multiple Scopes
+  hosts: dhcp_servers
+  become: yes
+  vars:
+    dhcp_scopes:
+      - name: "main_network"
+        subnet: "192.168.1.0"
+        netmask: "255.255.255.0"
+        range_start: "192.168.1.100"
+        range_end: "192.168.1.200"
+        gateway: "192.168.1.1"
+        dns_servers: ["8.8.8.8", "8.8.4.4"]
+        domain_name: "main.lab.local"
+        lease_time: 86400
+
+      - name: "guest_network"
+        subnet: "192.168.2.0"
+        netmask: "255.255.255.0"
+        range_start: "192.168.2.50"
+        range_end: "192.168.2.100"
+        gateway: "192.168.2.1"
+        dns_servers: ["1.1.1.1", "1.0.0.1"]
+        domain_name: "guest.lab.local"
+        lease_time: 3600
+
+    static_reservations:
+      - name: "server-01"
+        mac_address: "00:11:22:33:44:55"
+        ip_address: "192.168.1.10"
+        hostname: "server-01"
+
+      - name: "printer-01"
+        mac_address: "00:AA:BB:CC:DD:EE"
+        ip_address: "192.168.1.20"
+        hostname: "printer-01"
+
+  tasks:
+    - name: Generate advanced DHCP configuration
+      template:
+        src: dhcpd-advanced.conf.j2
+        dest: /etc/dhcp/dhcpd.conf
+        backup: yes
+        mode: '0644'
+      notify: restart dhcpd
+
+    - name: Validate DHCP configuration syntax
+      shell: dhcpd -t -cf /etc/dhcp/dhcpd.conf
+      register: dhcp_syntax_check
+      failed_when: dhcp_syntax_check.rc != 0
+
+    - name: Display configuration validation result
+      debug:
+        msg: "DHCP configuration syntax is valid"
+      when: dhcp_syntax_check.rc == 0
+
+  handlers:
+    - name: restart dhcpd
+      systemd:
+        name: dhcpd
+        state: restarted
