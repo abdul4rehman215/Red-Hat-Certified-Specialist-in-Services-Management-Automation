@@ -1,0 +1,20 @@
+virtual_hosts:
+  - server_name: "example1.local"
+    server_alias: "www.example1.local"
+    document_root: "/var/www/example1"
+    ssl_enabled: true
+    ssl_cert_path: "/etc/ssl/certs/example1.crt"
+    ssl_key_path: "/etc/ssl/private/example1.key"
+    redirect_to_https: true
+
+  - server_name: "example2.local"
+    server_alias: "www.example2.local"
+    document_root: "/var/www/example2"
+    ssl_enabled: true
+    ssl_cert_path: "/etc/ssl/certs/example2.crt"
+    ssl_key_path: "/etc/ssl/private/example2.key"
+    redirect_to_https: true
+
+  - server_name: "test.local"
+    document_root: "/var/www/test"
+    ssl_enabled: false
