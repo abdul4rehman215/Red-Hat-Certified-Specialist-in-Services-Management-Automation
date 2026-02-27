@@ -1,0 +1,59 @@
+---
+# tasks file for apache-role
+
+- name: Include OS-specific variables
+  include_vars: "{{ ansible_os_family }}.yml"
+  tags: always
+
+- name: Install Apache HTTP Server
+  package:
+    name: "{{ apache_package }}"
+    state: present
+  become: yes
+  notify: restart apache
+
+- name: Ensure Apache is started and enabled
+  service:
+    name: "{{ apache_service }}"
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Create custom Apache configuration from template
+  template:
+    src: apache-custom.conf.j2
+    dest: "{{ apache_config_dir }}/custom.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: restart apache
+  when: ansible_os_family == "RedHat"
+
+- name: Create custom index page from template
+  template:
+    src: index.html.j2
+    dest: "{{ apache_document_root }}/index.html"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: '0644'
+  become: yes
+
+- name: Open firewall for HTTP (RedHat/CentOS)
+  firewalld:
+    service: http
+    permanent: yes
+    state: enabled
+    immediate: yes
+  become: yes
+  when: ansible_os_family == "RedHat"
+  ignore_errors: yes
+
+- name: Open firewall for HTTP (Ubuntu/Debian)
+  ufw:
+    rule: allow
+    port: "{{ apache_port }}"
+    proto: tcp
+  become: yes
+  when: ansible_os_family == "Debian"
+  ignore_errors: yes
