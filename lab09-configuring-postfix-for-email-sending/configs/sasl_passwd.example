@@ -1,0 +1,2 @@
+# Format: [hostname]:port username:password
+[smtp.gmail.com]:587 your-email@gmail.com:your-app-password
