@@ -1,0 +1,10 @@
+[web_servers]
+localhost ansible_connection=local
+
+[database_servers]
+# Add your database servers here
+# db1.example.com
+# db2.example.com
+
+[all:vars]
+ansible_user=root
