@@ -1,0 +1,11 @@
+System Information for {{ ansible_hostname }}
+==========================================
+Operating System: {{ ansible_distribution }} {{ ansible_distribution_version }}
+Kernel Version: {{ ansible_kernel }}
+Architecture: {{ ansible_architecture }}
+Total Memory: {{ ansible_memtotal_mb }} MB
+CPU Cores: {{ ansible_processor_vcpus }}
+IP Address: {{ ansible_default_ipv4.address }}
+Last Updated: {{ ansible_date_time.iso8601 }}
+Managed by Ansible
+Configuration Date: {{ ansible_date_time.date }}
