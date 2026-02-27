@@ -1,0 +1,77 @@
+---
+- name: Configure Firewall Logging and Monitoring
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Enable firewalld logging
+      lineinfile:
+        path: /etc/firewalld/firewalld.conf
+        regexp: '^LogDenied='
+        line: 'LogDenied=all'
+        backup: yes
+      notify: restart firewalld
+
+    - name: Configure rsyslog for firewall logs
+      blockinfile:
+        path: /etc/rsyslog.conf
+        block: |
+          # Firewall logging
+          :msg,contains,"FINAL_REJECT" /var/log/firewall-rejected.log
+          :msg,contains,"FINAL_ACCEPT" /var/log/firewall-accepted.log
+          & stop
+        marker: "# {mark} FIREWALL LOGGING BLOCK"
+      notify: restart rsyslog
+
+    - name: Create log rotation for firewall logs
+      copy:
+        content: |
+          /var/log/firewall-rejected.log
+          /var/log/firewall-accepted.log {
+            daily
+            rotate 30
+            compress
+            delaycompress
+            missingok
+            notifempty
+            create 0644 root root
+          }
+        dest: /etc/logrotate.d/firewall-logs
+
+    - name: Create firewall monitoring script
+      copy:
+        content: |
+          #!/bin/bash
+          # Firewall monitoring script
+
+          LOG_FILE="/var/log/firewall-monitor.log"
+          DATE=$(date '+%Y-%m-%d %H:%M:%S')
+
+          # Check firewalld status
+          if systemctl is-active --quiet firewalld; then
+            echo "[$DATE] Firewalld is running" >> $LOG_FILE
+          else
+            echo "[$DATE] WARNING: Firewalld is not running!" >> $LOG_FILE
+          fi
+
+          # Count recent rejected connections
+          REJECTED_COUNT=$(grep "$(date '+%b %d %H:')" /var/log/firewall-rejected.log 2>/dev/null | wc -l)
+          echo "[$DATE] Rejected connections in last hour: $REJECTED_COUNT" >> $LOG_FILE
+
+          # Check for high rejection rates
+          if [ $REJECTED_COUNT -gt 100 ]; then
+            echo "[$DATE] ALERT: High rejection rate detected!" >> $LOG_FILE
+          fi
+        dest: /usr/local/bin/firewall-monitor.sh
+        mode: '0755'
+
+  handlers:
+    - name: restart firewalld
+      systemd:
+        name: firewalld
+        state: restarted
+
+    - name: restart rsyslog
+      systemd:
+        name: rsyslog
+        state: restarted
