@@ -1,0 +1,10 @@
+# NFS Exports Configuration
+# Format: directory client(options)
+# Shared directories - accessible by all clients in the network
+/nfs/shared *(rw,sync,no_root_squash,no_subtree_check,fsid=0)
+/nfs/shared/documents *(rw,sync,no_root_squash,no_subtree_check)
+/nfs/shared/projects *(rw,sync,no_root_squash,no_subtree_check)
+/nfs/shared/public *(ro,sync,no_root_squash,no_subtree_check)
+
+# Home directories - read-write access
+/nfs/home *(rw,sync,no_root_squash,no_subtree_check)
