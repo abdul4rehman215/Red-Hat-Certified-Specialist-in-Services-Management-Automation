@@ -1,0 +1,4 @@
+# /etc/rsyslog.conf.backup (client)
+# Backup created before modifying rsyslog for forwarding.
+# Original file preserved on the lab VM at:
+#   /etc/rsyslog.conf.backup
