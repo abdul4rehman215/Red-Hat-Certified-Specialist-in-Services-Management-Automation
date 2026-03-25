@@ -267,21 +267,6 @@ All labs are executed in controlled RHEL/CentOS-based environments and emphasize
 
 ---
 
-Perfect 👌 let’s align your **Repository Structure + Standard Lab Structure** with your other premium repos — but tailored specifically for:
-
-🛠 Enterprise Linux Services
-⚙ Ansible Automation
-🔐 Secure Configuration
-📜 Logging + Firewall
-🧠 SELinux + systemd
-🚀 tuned + cgroups
-
-Below is a refined version that matches your previous repo aesthetic and adds clarity without being too heavy.
-
-You can copy-paste this directly.
-
----
-
 # 📂 Repository Structure
 
 ```
@@ -426,22 +411,6 @@ This heatmap reflects **hands-on implementation across 20 labs** in:
 This heatmap reflects **program-level enterprise services engineering capability**, not isolated configuration tasks — covering:
 
 > Deploy → Secure → Automate → Validate → Tune → Govern
-
----
-
-Perfect 👌 let’s tailor a clean **How To Use** section specifically for your **Services Management & Automation** repo.
-
-This will align with:
-
-* 🛠 Ansible-driven labs
-* 🌐 Multi-host services (web, DB, DNS, logging, firewall)
-* 🔐 Secure automation workflows
-* ⚙ systemd / SELinux / firewalld validation
-* 📂 Structured lab folders
-
-Short, professional, and portfolio-consistent.
-
-You can copy-paste this directly:
 
 ---
 
